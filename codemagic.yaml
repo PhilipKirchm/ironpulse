@@ -15,31 +15,78 @@ workflows:
           npm run build
       - name: Update iOS platform
         script: |
+          npx cap add ios
           npm run ios:sync
       - name: Build iOS app
         script: |
           cd ios/App
-          xcodebuild clean
-          xcodebuild build \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -derivedDataPath build \
-            -destination "generic/platform=iOS"
+          ls -la
+          if [ -f "App.xcworkspace" ]; then
+            xcodebuild clean
+            xcodebuild build \
+              -workspace App.xcworkspace \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -destination "generic/platform=iOS"
+          elif [ -f "App.xcodeproj" ]; then
+            xcodebuild clean
+            xcodebuild build \
+              -project App.xcodeproj \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -destination "generic/platform=iOS"
+          else
+            echo "No Xcode project or workspace found"
+            exit 1
+          fi
       - name: Create IPA
         script: |
           cd ios/App
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -derivedDataPath build \
-            -archivePath build/App.xcarchive \
-            archive
-          xcodebuild \
-            -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportOptionsPlist exportOptions.plist \
-            -exportPath build/ios-release
+          # Create export options plist
+          cat > exportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>teamID</key>
+              <string></string>
+          </dict>
+          </plist>
+          EOF
+
+          if [ -f "App.xcworkspace" ]; then
+            xcodebuild \
+              -workspace App.xcworkspace \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -archivePath build/App.xcarchive \
+              archive
+            xcodebuild \
+              -exportArchive \
+              -archivePath build/App.xcarchive \
+              -exportOptionsPlist exportOptions.plist \
+              -exportPath build/ios-release
+          elif [ -f "App.xcodeproj" ]; then
+            xcodebuild \
+              -project App.xcodeproj \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -archivePath build/App.xcarchive \
+              archive
+            xcodebuild \
+              -exportArchive \
+              -archivePath build/App.xcarchive \
+              -exportOptionsPlist exportOptions.plist \
+              -exportPath build/ios-release
+          else
+            echo "No Xcode project or workspace found"
+            exit 1
+          fi
     artifacts:
       - ios/App/build/ios-release/*.ipa
