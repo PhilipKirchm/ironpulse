@@ -20,38 +20,53 @@ workflows:
       - name: Build iOS app
         script: |
           cd ios/App
-          echo "Contents of ios/App directory:"
+          echo "🔍 Contents of ios/App directory:"
           ls -la
           echo ""
-          echo "Checking for Xcode project files..."
+          echo "🔍 Checking for Xcode project files..."
+
+          # Check available schemes first
+          echo "🔍 Checking available schemes..."
+          if [ -d "App.xcodeproj" ]; then
+            xcodebuild -list -project App.xcodeproj
+          fi
+
           if [ -d "App.xcworkspace" ]; then
             echo "✅ Found workspace: App.xcworkspace"
-            echo "Building with workspace..."
-            xcodebuild clean -workspace App.xcworkspace -scheme App
+            echo "🔨 Building with workspace..."
+            xcodebuild clean -workspace App.xcworkspace -scheme App -configuration Release
             xcodebuild build \
               -workspace App.xcworkspace \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
               -destination "generic/platform=iOS" \
-              -allowProvisioningUpdates
+              -allowProvisioningUpdates \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
           elif [ -d "App.xcodeproj" ]; then
             echo "✅ Found project: App.xcodeproj"
-            echo "Building with project..."
-            xcodebuild clean -project App.xcodeproj -scheme App
+            echo "🔨 Building with project..."
+            xcodebuild clean -project App.xcodeproj -scheme App -configuration Release
             xcodebuild build \
               -project App.xcodeproj \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
               -destination "generic/platform=iOS" \
-              -allowProvisioningUpdates
+              -allowProvisioningUpdates \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
           else
             echo "❌ Available files:"
             ls -la
             echo "❌ No Xcode project or workspace found"
             exit 1
           fi
+
+          echo "✅ Build completed successfully"
       - name: Create IPA
         script: |
           cd ios/App
@@ -70,7 +85,7 @@ workflows:
           EOF
 
           if [ -d "App.xcworkspace" ]; then
-            echo "Archiving with workspace..."
+            echo "📦 Archiving with workspace..."
             xcodebuild \
               -workspace App.xcworkspace \
               -scheme App \
@@ -78,8 +93,11 @@ workflows:
               -derivedDataPath build \
               -archivePath build/App.xcarchive \
               archive \
-              -allowProvisioningUpdates
-            echo "Exporting IPA..."
+              -allowProvisioningUpdates \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+            echo "📤 Exporting IPA..."
             xcodebuild \
               -exportArchive \
               -archivePath build/App.xcarchive \
@@ -87,7 +105,7 @@ workflows:
               -exportPath build/ios-release \
               -allowProvisioningUpdates
           elif [ -d "App.xcodeproj" ]; then
-            echo "Archiving with project..."
+            echo "📦 Archiving with project..."
             xcodebuild \
               -project App.xcodeproj \
               -scheme App \
@@ -95,8 +113,11 @@ workflows:
               -derivedDataPath build \
               -archivePath build/App.xcarchive \
               archive \
-              -allowProvisioningUpdates
-            echo "Exporting IPA..."
+              -allowProvisioningUpdates \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+            echo "📤 Exporting IPA..."
             xcodebuild \
               -exportArchive \
               -archivePath build/App.xcarchive \
