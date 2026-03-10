@@ -6,8 +6,6 @@ workflows:
     environment:
       node: 18
       xcode: latest
-    triggers:
-      - push
     scripts:
       - name: Install dependencies
         script: |
