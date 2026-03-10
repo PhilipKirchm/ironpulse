@@ -43,10 +43,3 @@ workflows:
             -exportPath build/ios-release
     artifacts:
       - ios/App/build/ios-release/*.ipa
-    publishing:
-      email:
-        recipients:
-          - $CM_EMAIL
-        notify:
-          success: true
-          failure: true
