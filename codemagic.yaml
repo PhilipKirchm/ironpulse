@@ -160,3 +160,33 @@ workflows:
       - ios/App/build/ios-release/*.ipa
       - ios/App/build/ios-release/*.app
       - ios/App/build/Build/Products/Release-iphoneos/*.app
+
+  android-build:
+    name: Build Android APK
+    instance_type: linux_x2
+    max_build_duration: 120
+    environment:
+      node: 22
+      java: 17
+      android_sdk: latest
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Build web app
+        script: |
+          npm run build
+      - name: Update Android platform
+        script: |
+          npx cap add android
+          npx cap sync android
+      - name: Build Android APK
+        script: |
+          cd android
+          echo "🔨 Building Android APK..."
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          echo "✅ APK build completed"
+          ls -la app/build/outputs/apk/debug/
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
