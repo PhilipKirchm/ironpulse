@@ -1,0 +1,5 @@
+{
+  "appId": "com.ironpulse.app.test",
+  "appName": "IronPulse Test",
+  "webDir": "dist"
+}
