@@ -20,8 +20,10 @@ workflows:
       - name: Build iOS app
         script: |
           cd ios/App
+          echo "Contents of ios/App directory:"
           ls -la
-          if [ -f "App.xcworkspace" ]; then
+          if [ -d "App.xcworkspace" ]; then
+            echo "Found workspace: App.xcworkspace"
             xcodebuild clean
             xcodebuild build \
               -workspace App.xcworkspace \
@@ -29,7 +31,8 @@ workflows:
               -configuration Release \
               -derivedDataPath build \
               -destination "generic/platform=iOS"
-          elif [ -f "App.xcodeproj" ]; then
+          elif [ -d "App.xcodeproj" ]; then
+            echo "Found project: App.xcodeproj"
             xcodebuild clean
             xcodebuild build \
               -project App.xcodeproj \
@@ -38,6 +41,8 @@ workflows:
               -derivedDataPath build \
               -destination "generic/platform=iOS"
           else
+            echo "Available files:"
+            ls -la
             echo "No Xcode project or workspace found"
             exit 1
           fi
@@ -58,7 +63,7 @@ workflows:
           </plist>
           EOF
 
-          if [ -f "App.xcworkspace" ]; then
+          if [ -d "App.xcworkspace" ]; then
             xcodebuild \
               -workspace App.xcworkspace \
               -scheme App \
@@ -71,7 +76,7 @@ workflows:
               -archivePath build/App.xcarchive \
               -exportOptionsPlist exportOptions.plist \
               -exportPath build/ios-release
-          elif [ -f "App.xcodeproj" ]; then
+          elif [ -d "App.xcodeproj" ]; then
             xcodebuild \
               -project App.xcodeproj \
               -scheme App \
