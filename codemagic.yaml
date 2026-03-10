@@ -168,7 +168,6 @@ workflows:
     environment:
       node: 22
       java: 17
-      android_sdk: latest
     scripts:
       - name: Install dependencies
         script: |
