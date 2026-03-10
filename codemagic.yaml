@@ -22,28 +22,34 @@ workflows:
           cd ios/App
           echo "Contents of ios/App directory:"
           ls -la
+          echo ""
+          echo "Checking for Xcode project files..."
           if [ -d "App.xcworkspace" ]; then
-            echo "Found workspace: App.xcworkspace"
-            xcodebuild clean
+            echo "✅ Found workspace: App.xcworkspace"
+            echo "Building with workspace..."
+            xcodebuild clean -workspace App.xcworkspace -scheme App
             xcodebuild build \
               -workspace App.xcworkspace \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
-              -destination "generic/platform=iOS"
+              -destination "generic/platform=iOS" \
+              -allowProvisioningUpdates
           elif [ -d "App.xcodeproj" ]; then
-            echo "Found project: App.xcodeproj"
-            xcodebuild clean
+            echo "✅ Found project: App.xcodeproj"
+            echo "Building with project..."
+            xcodebuild clean -project App.xcodeproj -scheme App
             xcodebuild build \
               -project App.xcodeproj \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
-              -destination "generic/platform=iOS"
+              -destination "generic/platform=iOS" \
+              -allowProvisioningUpdates
           else
-            echo "Available files:"
+            echo "❌ Available files:"
             ls -la
-            echo "No Xcode project or workspace found"
+            echo "❌ No Xcode project or workspace found"
             exit 1
           fi
       - name: Create IPA
@@ -64,33 +70,41 @@ workflows:
           EOF
 
           if [ -d "App.xcworkspace" ]; then
+            echo "Archiving with workspace..."
             xcodebuild \
               -workspace App.xcworkspace \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
               -archivePath build/App.xcarchive \
-              archive
+              archive \
+              -allowProvisioningUpdates
+            echo "Exporting IPA..."
             xcodebuild \
               -exportArchive \
               -archivePath build/App.xcarchive \
               -exportOptionsPlist exportOptions.plist \
-              -exportPath build/ios-release
+              -exportPath build/ios-release \
+              -allowProvisioningUpdates
           elif [ -d "App.xcodeproj" ]; then
+            echo "Archiving with project..."
             xcodebuild \
               -project App.xcodeproj \
               -scheme App \
               -configuration Release \
               -derivedDataPath build \
               -archivePath build/App.xcarchive \
-              archive
+              archive \
+              -allowProvisioningUpdates
+            echo "Exporting IPA..."
             xcodebuild \
               -exportArchive \
               -archivePath build/App.xcarchive \
               -exportOptionsPlist exportOptions.plist \
-              -exportPath build/ios-release
+              -exportPath build/ios-release \
+              -allowProvisioningUpdates
           else
-            echo "No Xcode project or workspace found"
+            echo "❌ No Xcode project or workspace found for archiving"
             exit 1
           fi
     artifacts:
