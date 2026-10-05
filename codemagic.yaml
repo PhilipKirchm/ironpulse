@@ -1,162 +1,60 @@
 workflows:
   ios-build:
-    name: Build iOS App
+    name: IronPulse iOS Build
     instance_type: mac_mini_m1
-    max_build_duration: 120
+    max_build_duration: 60
     environment:
       node: 22
       xcode: latest
+      cocoapods: default
     scripts:
-      - name: Install dependencies
-        script: |
-          npm install
+      - name: Install Node dependencies
+        script: npm install
+
       - name: Build web app
-        script: |
-          npm run build
-      - name: Update iOS platform
-        script: |
-          npx cap add ios
-          npm run ios:sync
-      - name: Build iOS app
-        script: |
-          cd ios/App
-          echo "🔍 Contents of ios/App directory:"
-          ls -la
-          echo ""
-          echo "🔍 Checking for Xcode project files..."
+        script: npm run build
 
-          # Check available schemes first
-          echo "🔍 Checking available schemes..."
-          if [ -d "App.xcodeproj" ]; then
-            xcodebuild -list -project App.xcodeproj
-          fi
+      - name: Sync Capacitor to iOS
+        script: npx cap sync ios
 
-          if [ -d "App.xcworkspace" ]; then
-            echo "✅ Found workspace: App.xcworkspace"
-            echo "🔨 Building with workspace..."
-            xcodebuild clean -workspace App.xcworkspace -scheme App -configuration Release
-            xcodebuild build \
-              -workspace App.xcworkspace \
-              -scheme App \
-              -configuration Release \
-              -derivedDataPath build \
-              -destination "generic/platform=iOS" \
-              -allowProvisioningUpdates \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
-          elif [ -d "App.xcodeproj" ]; then
-            echo "✅ Found project: App.xcodeproj"
-            echo "🔨 Building with project..."
-            xcodebuild clean -project App.xcodeproj -scheme App -configuration Release
-            xcodebuild build \
-              -project App.xcodeproj \
-              -scheme App \
-              -configuration Release \
-              -derivedDataPath build \
-              -destination "generic/platform=iOS" \
-              -allowProvisioningUpdates \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
-          else
-            echo "❌ Available files:"
-            ls -la
-            echo "❌ No Xcode project or workspace found"
-            exit 1
-          fi
-
-          echo "✅ Build completed successfully"
-      - name: Create IPA
+      - name: Install CocoaPods
         script: |
           cd ios/App
-          # Create export options plist for development
-          cat > exportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>development</string>
-              <key>teamID</key>
-              <string></string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-              <key>provisioningProfiles</key>
-              <dict>
-              </dict>
-          </dict>
-          </plist>
-          EOF
+          pod install
 
-          echo "📦 Starting archiving process..."
+      - name: Build iOS (unsigned)
+        script: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -derivedDataPath build \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --color || true
 
-          # Try archiving first
-          if [ -d "App.xcworkspace" ]; then
-            echo "Archiving with workspace..."
-            if xcodebuild \
-              -workspace App.xcworkspace \
-              -scheme App \
-              -configuration Release \
-              -derivedDataPath build \
-              -archivePath build/App.xcarchive \
-              archive \
-              -allowProvisioningUpdates \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO; then
-              echo "✅ Archive created successfully"
-            else
-              echo "❌ Archive failed, trying alternative approach..."
-              # Alternative: Just copy the built app
-              mkdir -p build/ios-release
-              cp -r build/Build/Products/Release-iphoneos/App.app build/ios-release/ || echo "Could not copy app bundle"
-              echo "📱 Using built app instead of IPA"
-              exit 0
-            fi
-          elif [ -d "App.xcodeproj" ]; then
-            echo "Archiving with project..."
-            if xcodebuild \
-              -project App.xcodeproj \
-              -scheme App \
-              -configuration Release \
-              -derivedDataPath build \
-              -archivePath build/App.xcarchive \
-              archive \
-              -allowProvisioningUpdates \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO; then
-              echo "✅ Archive created successfully"
-            else
-              echo "❌ Archive failed, trying alternative approach..."
-              # Alternative: Just copy the built app
-              mkdir -p build/ios-release
-              cp -r build/Build/Products/Release-iphoneos/App.app build/ios-release/ || echo "Could not copy app bundle"
-              echo "📱 Using built app instead of IPA"
-              exit 0
-            fi
-          else
-            echo "❌ No Xcode project or workspace found for archiving"
-            exit 1
-          fi
+      - name: Archive & export IPA (unsigned)
+        script: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -derivedDataPath build \
+            -archivePath build/IronPulse.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --color
 
-          # If archive succeeded, try to export
-          echo "📤 Attempting to export IPA..."
-          if xcodebuild \
-            -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportOptionsPlist exportOptions.plist \
-            -exportPath build/ios-release \
-            -allowProvisioningUpdates; then
-            echo "✅ IPA exported successfully"
-          else
-            echo "❌ IPA export failed, copying app bundle instead..."
-            mkdir -p build/ios-release
-            cp -r build/App.xcarchive/Products/Applications/App.app build/ios-release/ 2>/dev/null || echo "Could not copy from archive"
-            echo "📱 Using app bundle for sideloading"
-          fi
+          mkdir -p build/ipa-export
+          cp -r build/IronPulse.xcarchive/Products/Applications/App.app \
+            build/ipa-export/ || true
+
     artifacts:
-      - ios/App/build/ios-release/*.ipa
-      - ios/App/build/ios-release/*.app
-      - ios/App/build/Build/Products/Release-iphoneos/*.app
+      - ios/App/build/ipa-export/*.app
+      - ios/App/build/IronPulse.xcarchive/**
