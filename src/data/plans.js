@@ -43,3 +43,162 @@ export const PLANS = [
         ]
     }
 ];
+
+export const getSuggestedExercisesForDayName = (dayName) => {
+    const name = (dayName || '').toLowerCase().trim();
+    if (!name) return [];
+
+    const isPush = name.includes('push');
+    const isPull = name.includes('pull');
+    const isLegs = name.includes('leg') || name.includes('bein');
+    const isUpper = name.includes('upper') || name.includes('oberkörper') || name.includes('oberkoerper');
+    const isLower = name.includes('lower') || name.includes('unterkörper') || name.includes('unterkoerper');
+    const isChest = name.includes('chest') || name.includes('brust');
+    const isBack = name.includes('back') || name.includes('rücken') || name.includes('ruecken');
+    const isShoulders = name.includes('shoulder') || name.includes('schulter');
+    const isArms = name.includes('arm') || name.includes('bicep') || name.includes('tricep');
+    const isAbs = name.includes('abs') || name.includes('bauch');
+
+    // Case 1: Push Pull (Hybrid / Combo) or Chest & Back / Brust & Rücken
+    if ((isPush && isPull) || (isChest && isBack)) {
+        // 3 Chest + 3 Back
+        return [
+            'bench_press',
+            'incline_dumbell_press',
+            'cable_fly',
+            'pull_up',
+            'barbell_row',
+            'lat_pulldown'
+        ];
+    }
+
+    // Case 2: Shoulders & Arms / Schultern & Arme
+    if (isShoulders && isArms) {
+        return [
+            'ohp',
+            'lateral_raise',
+            'bicep_curl',
+            'tricep_pushdown',
+            'hammer_curl',
+            'skull_crusher'
+        ];
+    }
+
+    // Case 3: Push
+    if (isPush) {
+        return [
+            'bench_press',
+            'ohp',
+            'incline_dumbell_press',
+            'lateral_raise',
+            'tricep_pushdown',
+            'cable_fly'
+        ];
+    }
+
+    // Case 4: Pull
+    if (isPull) {
+        return [
+            'pull_up',
+            'barbell_row',
+            'lat_pulldown',
+            'face_pull',
+            'bicep_curl',
+            'hammer_curl'
+        ];
+    }
+
+    // Case 5: Legs / Beine
+    if (isLegs) {
+        return [
+            'squat',
+            'rdl',
+            'leg_press',
+            'leg_extension',
+            'leg_curl',
+            'standing_calf_raise'
+        ];
+    }
+
+    // Case 6: Upper / Oberkörper
+    if (isUpper) {
+        return [
+            'bench_press',
+            'barbell_row',
+            'ohp',
+            'pull_up',
+            'bicep_curl',
+            'tricep_pushdown'
+        ];
+    }
+
+    // Case 7: Lower / Unterkörper
+    if (isLower) {
+        return [
+            'squat',
+            'leg_press',
+            'rdl',
+            'leg_extension',
+            'leg_curl',
+            'standing_calf_raise'
+        ];
+    }
+
+    // Case 8: Chest / Brust
+    if (isChest) {
+        return [
+            'bench_press',
+            'incline_dumbell_press',
+            'machine_chest_press',
+            'cable_fly',
+            'dip'
+        ];
+    }
+
+    // Case 9: Back / Rücken
+    if (isBack) {
+        return [
+            'pull_up',
+            'barbell_row',
+            'lat_pulldown',
+            'cable_row',
+            'face_pull'
+        ];
+    }
+
+    // Case 10: Arms / Arme
+    if (isArms) {
+        return [
+            'bicep_curl',
+            'tricep_pushdown',
+            'hammer_curl',
+            'skull_crusher',
+            'preacher_curl',
+            'overhead_extension'
+        ];
+    }
+
+    // Case 11: Shoulders / Schultern
+    if (isShoulders) {
+        return [
+            'ohp',
+            'lateral_raise',
+            'dumbbell_shoulder_press',
+            'face_pull',
+            'reverse_pec_deck'
+        ];
+    }
+
+    // Case 12: Abs / Bauch
+    if (isAbs) {
+        return [
+            'hanging_leg_raise',
+            'cable_crunch',
+            'plank',
+            'ab_wheel'
+        ];
+    }
+
+    return [];
+};
+

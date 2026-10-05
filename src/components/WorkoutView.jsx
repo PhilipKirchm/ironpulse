@@ -4,13 +4,15 @@ import { ExerciseCard } from './ExerciseCard';
 import { useData } from '../hooks/useData';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Edit2, Check, Search, X, Plus, Save } from 'lucide-react';
+import { MUSCLE_GROUPS } from '../data/exercises';
 import confetti from 'canvas-confetti';
 
 export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
-    const { getExercisesForDay, customizeDay, saveWorkout, updateLog, data, addCustomExercise, getAllExercises, saveWorkoutDraft, clearWorkoutDraft } = useData();
+    const { getExercisesForDay, customizeDay, saveWorkout, updateLog, data, addCustomExercise, getAllExercises, saveWorkoutDraft, clearWorkoutDraft, setMachineSelection, getMachineSelection, getLastLoggedSession } = useData();
     const [exercises, setExercises] = useState([]);
     const [setsData, setSetsData] = useState({});
     const [notes, setNotes] = useState({}); // Stores notes per exerciseId
+    const [machineSelections, setMachineSelections] = useState({}); // Stores machine per exerciseId
     const [isEditing, setIsEditing] = useState(false);
     const [swappingId, setSwappingId] = useState(null); // ID or 'NEW'
     const [searchQuery, setSearchQuery] = useState('');
@@ -33,18 +35,22 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
 
             const initialSets = {};
             const initialNotes = {};
+            const initialMachines = {};
             editLog.exercises.forEach(ex => {
                 initialSets[ex.id] = ex.sets.map(s => ({ ...s, done: true }));
                 if (ex.note) initialNotes[ex.id] = ex.note;
+                if (ex.machine) initialMachines[ex.id] = ex.machine;
             });
             setSetsData(initialSets);
             setNotes(initialNotes);
+            setMachineSelections(initialMachines);
         } else {
             const draft = data.workoutDrafts?.[dayId];
             if (draft) {
                 setExercises(draft.exercises);
                 setSetsData(draft.setsData);
                 setNotes(draft.notes || {});
+                setMachineSelections(draft.machineSelections || {});
             } else {
                 const loaded = getExercisesForDay(planId, dayId);
                 setExercises(loaded);
@@ -52,12 +58,28 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                     const next = { ...prev };
                     loaded.forEach(ex => {
                         if (!next[ex.id]) {
-                            next[ex.id] = [{ weight: '', reps: '', done: false }, { weight: '', reps: '', done: false }];
+                            const lastSession = getLastLoggedSession(ex.id);
+                            if (lastSession && lastSession.sets && lastSession.sets.length > 0) {
+                                next[ex.id] = lastSession.sets.map(s => ({
+                                    weight: String(s.weight),
+                                    reps: String(s.reps),
+                                    done: false
+                                }));
+                            } else {
+                                next[ex.id] = [{ weight: '', reps: '', done: false }, { weight: '', reps: '', done: false }];
+                            }
                         }
                     });
                     return next;
                 });
                 setNotes({});
+                // Initialize machine selections from global data or last session
+                const machines = {};
+                loaded.forEach(ex => {
+                    const lastSession = getLastLoggedSession(ex.id);
+                    machines[ex.id] = lastSession?.machine || getMachineSelection(ex.id);
+                });
+                setMachineSelections(machines);
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,9 +88,9 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     // Auto-save draft
     useEffect(() => {
         if (!editLog && exercises.length > 0) {
-            saveWorkoutDraft(dayId, { exercises, setsData, notes });
+            saveWorkoutDraft(dayId, { exercises, setsData, notes, machineSelections });
         }
-    }, [exercises, setsData, notes, dayId, editLog]);
+    }, [exercises, setsData, notes, machineSelections, dayId, editLog]);
 
     const handleUpdateSets = (exId, newSets) => {
         setSetsData(prev => ({ ...prev, [exId]: newSets }));
@@ -78,11 +100,17 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
         setNotes(prev => ({ ...prev, [exId]: note }));
     };
 
+    const handleMachineChange = (exId, manufacturer) => {
+        setMachineSelections(prev => ({ ...prev, [exId]: manufacturer }));
+        setMachineSelection(exId, manufacturer);
+    };
+
     const handleFinish = () => {
         const payloadExercises = exercises.map(ex => ({
             id: ex.id,
             sets: setsData[ex.id]?.filter(s => s.done && s.weight && s.reps) || [],
-            note: notes[ex.id] || ''
+            note: notes[ex.id] || '',
+            machine: machineSelections[ex.id] || 'Free Weights'
         }));
 
         if (editLog) {
@@ -254,6 +282,9 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         onRemove={() => handleRemove(ex.id)}
                         onSwap={() => handleSwap(ex.id)}
                         pr={data.prs[ex.id]}
+                        lastSession={getLastLoggedSession(ex.id)}
+                        machineSelection={machineSelections[ex.id]}
+                        onMachineChange={(mfg) => handleMachineChange(ex.id, mfg)}
                     />
                 ))}
             </div>
@@ -306,7 +337,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                             <div style={{ padding: '20px' }}>
                                 <div style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Muscle Group</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
-                                    {['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Abs', 'Cardio', 'Other'].map(m => (
+                                    {MUSCLE_GROUPS.map(m => (
                                         <button
                                             key={m}
                                             onClick={() => setNewExerciseMuscle(m)}

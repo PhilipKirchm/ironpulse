@@ -1,9 +1,38 @@
 
+export const MACHINE_MANUFACTURERS = [
+    'Free Weights',
+    'Technogym',
+    'Gym80',
+    'Panata',
+    'Hammer Strength',
+    'Rogue',
+    'Bodycraft',
+    'Life Fitness',
+    'Nautilus',
+    'Matrix',
+    'Other'
+];
+
+export const MUSCLE_GROUPS = [
+    'Chest',
+    'Back',
+    'Shoulders',
+    'Biceps',
+    'Triceps',
+    'Forearms',
+    'Quads',
+    'Hamstrings',
+    'Glutes',
+    'Calves',
+    'Abs',
+    'Other'
+];
+
 export const EXERCISES = [
     // --- CHEST ---
-    { id: 'bench_press', name: 'Barbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['dumbbell_press', 'machine_chest_press', 'smith_bench_press'] },
-    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'] },
-    { id: 'dumbbell_press', name: 'Dumbbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'] },
+    { id: 'bench_press', name: 'Barbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['dumbbell_press', 'machine_chest_press', 'smith_bench_press'], machines: ['Free Weights'] },
+    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Technogym', 'Gym 80 Panata', 'Rogue', 'Other'] },
+    { id: 'dumbbell_press', name: 'Dumbbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Free Weights'] },
     { id: 'incline_bench_press', name: 'Incline Barbell Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_dumbell_press', 'smith_incline_press'] },
     { id: 'smith_incline_press', name: 'Incline Smith Machine Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_bench_press'] },
     { id: 'incline_dumbell_press', name: 'Incline Dumbbell Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_bench_press', 'incline_machine_press'] },

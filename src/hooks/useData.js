@@ -3,8 +3,25 @@ import { useState, useEffect } from 'react';
 import { PLANS } from '../data/plans';
 import { EXERCISES as DEFAULT_EXERCISES } from '../data/exercises';
 
-const STORAGE_KEY = 'fitness_app_v4'; // Production Key
-const IS_TEST_BUILD = false; // Disable seeding
+const STORAGE_KEY_BASE = 'fitness_app_v4'; 
+const IS_TEST_BUILD = false; 
+
+const GLOBAL_USERS_KEY = 'fitness_app_users';
+const ACTIVE_USER_KEY = 'fitness_app_activeUser';
+
+function getActiveUser() {
+    try { return localStorage.getItem(ACTIVE_USER_KEY) || null; } catch { return null; }
+}
+function getGlobalUsers() {
+    try { return JSON.parse(localStorage.getItem(GLOBAL_USERS_KEY) || '{}'); } catch { return {}; }
+}
+function setGlobalUsers(users) {
+    localStorage.setItem(GLOBAL_USERS_KEY, JSON.stringify(users));
+}
+function setActiveUserStore(name) {
+    if (name) localStorage.setItem(ACTIVE_USER_KEY, name);
+    else localStorage.removeItem(ACTIVE_USER_KEY);
+}
 
 const INITIAL_DATA = {
     currentPlanId: null,
@@ -15,20 +32,38 @@ const INITIAL_DATA = {
     customExercises: [], // [{ id, name, muscle, type, substitutes }]
     startDate: new Date().toISOString(), // Track when user started for deload cycles
     logs: [], // Track completed workouts
-    workoutDrafts: {} // { dayId: { exercises, setsData } }
+    workoutDrafts: {}, // { dayId: { exercises, setsData } }
+    machineSelections: {}, // { exerciseId: 'Technogym' | 'Gym80' | 'Panata' | etc }
+    // New: simple auth and custom plans
+    user: null, // { name, password }
+    customPlans: [] // user created plans (merged with PLANS in memory)
     // Note: We merge DEFAULT_EXERCISES + customExercises in memory
 };
 
 export function useData() {
+    const [activeUser, setActiveUserState] = useState(getActiveUser);
+
     const [data, setData] = useState(() => {
+        const user = getActiveUser();
+        if (!user) return INITIAL_DATA;
+
+        const key = `${STORAGE_KEY_BASE}_${user}`;
+
         try {
-            const saved = localStorage.getItem(STORAGE_KEY);
+            const saved = localStorage.getItem(key);
             if (saved) return JSON.parse(saved);
 
-            // If no data and we are in test build, seed it
-            if (IS_TEST_BUILD) {
-                return seedData(INITIAL_DATA);
+            // Migration step for existing users
+            const oldSaved = localStorage.getItem(STORAGE_KEY_BASE);
+            if (oldSaved) {
+                const parsed = JSON.parse(oldSaved);
+                if (parsed.user && parsed.user.name === user) {
+                    localStorage.setItem(key, oldSaved);
+                    return parsed;
+                }
             }
+
+            if (IS_TEST_BUILD) return seedData(INITIAL_DATA);
             return INITIAL_DATA;
         } catch (e) {
             return INITIAL_DATA;
@@ -36,23 +71,190 @@ export function useData() {
     });
 
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }, [data]);
+        if (!activeUser) {
+            setData(INITIAL_DATA);
+            return;
+        }
+
+        const key = `${STORAGE_KEY_BASE}_${activeUser}`;
+        try {
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                setData(JSON.parse(saved));
+            } else {
+                const oldSaved = localStorage.getItem(STORAGE_KEY_BASE);
+                if (oldSaved) {
+                    const parsed = JSON.parse(oldSaved);
+                    if (parsed.user && parsed.user.name === activeUser) {
+                        localStorage.setItem(key, oldSaved);
+                        setData(parsed);
+                        return;
+                    }
+                }
+                setData({ ...INITIAL_DATA, user: { name: activeUser } });
+            }
+        } catch (e) {
+            setData(INITIAL_DATA);
+        }
+    }, [activeUser]);
+
+    useEffect(() => {
+        if (!activeUser) return;
+        const key = `${STORAGE_KEY_BASE}_${activeUser}`;
+        localStorage.setItem(key, JSON.stringify(data));
+    }, [data, activeUser]);
 
     // Merge default and custom exercises for usage
     const getAllExercises = () => {
         return [...DEFAULT_EXERCISES, ...(data.customExercises || [])];
     }
 
-    const selectPlan = (planId) => {
+    // Return built-in + custom plans
+    const getAllPlans = () => {
+        return [...PLANS, ...(data.customPlans || [])];
+    }
+
+    // Select a plan. preserveProgress=true avoids wiping logs/prs/drafts
+    const selectPlan = (planId, options = { preserveProgress: true }) => {
         setData(prev => ({ ...prev, currentPlanId: planId, currentDayIndex: 0 }));
     };
 
     const resetPlan = () => {
+        // simply unset the current plan but keep logs/prs/drafts intact so progress isn't lost
         setData(prev => ({ ...prev, currentPlanId: null }));
     }
 
-    const getPlan = () => PLANS.find(p => p.id === data.currentPlanId);
+    const registerUser = (name, password) => {
+        if (!name) return { ok: false, error: 'Name required' };
+        const users = getGlobalUsers();
+        if (users[name]) return { ok: false, error: 'User already exists' };
+        
+        users[name] = password;
+        setGlobalUsers(users);
+        
+        setActiveUserStore(name);
+        setActiveUserState(name);
+        
+        setData(prev => ({ ...prev, user: { name, password } }));
+        setTimeout(() => window.location.reload(), 50);
+        return { ok: true };
+    };
+
+    const loginUser = (name, password) => {
+        if (!name) return { ok: false, error: 'Name required' };
+        const users = getGlobalUsers();
+        
+        // Fallback to exactly one global storage item if it exists
+        const oldSaved = localStorage.getItem(STORAGE_KEY_BASE);
+        let fallbackOk = false;
+        if (oldSaved) {
+            const parsed = JSON.parse(oldSaved);
+            if (parsed.user && parsed.user.name === name && parsed.user.password === password) {
+                fallbackOk = true;
+                users[name] = password;
+                setGlobalUsers(users);
+            }
+        }
+
+        if (users[name] === password || fallbackOk) {
+            setActiveUserStore(name);
+            setActiveUserState(name);
+            setTimeout(() => window.location.reload(), 50);
+            return { ok: true };
+        }
+        return { ok: false, error: 'Invalid credentials' };
+    };
+
+    const logoutUser = () => {
+        setActiveUserStore(null);
+        setActiveUserState(null);
+        setData(INITIAL_DATA);
+        setTimeout(() => window.location.reload(), 50);
+    };
+
+    // Allow creating a new custom plan and select it immediately
+    const addCustomPlan = (plan) => {
+        const newId = `custom_${Date.now()}`;
+        const newPlan = { id: newId, ...plan };
+        setData(prev => ({ ...prev, customPlans: [...(prev.customPlans||[]), newPlan], currentPlanId: newId }));
+        return newPlan;
+    };
+
+    const updateCustomPlan = (planId, updatedPlan) => {
+        setData(prev => {
+            const isCustom = (prev.customPlans || []).some(p => p.id === planId);
+            if (isCustom) {
+                return {
+                    ...prev,
+                    customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p)
+                };
+            } else {
+                // If editing a built-in plan, convert it to a custom plan
+                const newCustomPlan = { ...updatedPlan, id: `custom_${Date.now()}` };
+                return {
+                    ...prev,
+                    customPlans: [...(prev.customPlans || []), newCustomPlan],
+                    currentPlanId: newCustomPlan.id
+                };
+            }
+        });
+    };
+
+    const duplicatePlan = (planId) => {
+        const target = getAllPlans().find(p => p.id === planId);
+        if (!target) return null;
+        const newPlan = {
+            id: `custom_${Date.now()}`,
+            name: `${target.name} (Copy)`,
+            description: target.description || '',
+            days: JSON.parse(JSON.stringify(target.days))
+        };
+        setData(prev => ({
+            ...prev,
+            customPlans: [...(prev.customPlans || []), newPlan]
+        }));
+        return newPlan;
+    };
+
+    const deleteCustomPlan = (planId) => {
+        setData(prev => {
+            const newCustoms = (prev.customPlans || []).filter(p => p.id !== planId);
+            const nextPlanId = prev.currentPlanId === planId ? (newCustoms[0]?.id || PLANS[0].id) : prev.currentPlanId;
+            return {
+                ...prev,
+                customPlans: newCustoms,
+                currentPlanId: nextPlanId
+            };
+        });
+    };
+
+    const getLastLoggedSession = (exerciseId) => {
+        if (!data.logs || data.logs.length === 0) return null;
+        for (const log of data.logs) {
+            if (!log.exercises) continue;
+            const ex = log.exercises.find(e => e.id === exerciseId);
+            if (ex && ex.sets && ex.sets.length > 0) {
+                const validSets = ex.sets.filter(s => s.weight !== '' && s.weight !== undefined && s.weight !== null);
+                if (validSets.length > 0) {
+                    return {
+                        date: log.date,
+                        sets: validSets,
+                        note: ex.note || '',
+                        machine: ex.machine || 'Free Weights'
+                    };
+                }
+            }
+        }
+        return null;
+    };
+
+    const getExerciseStats = (exerciseId) => {
+        const pr = data.prs[exerciseId] || 0;
+        const lastSession = getLastLoggedSession(exerciseId);
+        return { pr, lastSession };
+    };
+
+    const getPlan = () => getAllPlans().find(p => p.id === data.currentPlanId);
 
     // Calendar-based scheduling for consistency
     const getCurrentDay = () => {
@@ -183,11 +385,17 @@ export function useData() {
     const getExercisesForDay = (planId, dayId) => {
         const allExercises = getAllExercises();
         if (data.customOverrides && data.customOverrides[planId] && data.customOverrides[planId][dayId]) {
-            return data.customOverrides[planId][dayId].map(id => allExercises.find(e => e.id === id)).filter(Boolean);
+            return data.customOverrides[planId][dayId].map(id => {
+                const found = allExercises.find(e => e.id === id);
+                return found || { id, name: id, muscle: 'Other', type: 'Custom' };
+            }).filter(Boolean);
         }
-        const plan = PLANS.find(p => p.id === planId);
+        const plan = getAllPlans().find(p => p.id === planId);
         const day = plan?.days.find(d => d.id === dayId);
-        return day ? day.exercises.map(id => allExercises.find(e => e.id === id)).filter(Boolean) : [];
+        return day ? day.exercises.map(id => {
+            const found = allExercises.find(e => e.id === id);
+            return found || { id, name: id, muscle: 'Other', type: 'Custom' };
+        }).filter(Boolean) : [];
     };
 
     const addExerciseToDay = () => {
@@ -210,6 +418,20 @@ export function useData() {
         }));
         return newEx;
     }
+
+    const setMachineSelection = (exerciseId, manufacturer) => {
+        setData(prev => ({
+            ...prev,
+            machineSelections: {
+                ...prev.machineSelections,
+                [exerciseId]: manufacturer
+            }
+        }));
+    };
+
+    const getMachineSelection = (exerciseId) => {
+        return data.machineSelections?.[exerciseId] || 'Free Weights';
+    };
 
     const setGoal = (key, value) => {
         setData(prev => ({
@@ -276,6 +498,11 @@ export function useData() {
         addExerciseToDay,
         addCustomExercise, // Exported
         getAllExercises, // Exported
+        getAllPlans,
+        addCustomPlan,
+        registerUser,
+        loginUser,
+        logoutUser,
         getWorkoutForDate,
         getWeekNumber,
         isDeloadWeek,
@@ -283,7 +510,14 @@ export function useData() {
         getNextTrainingDay,
         saveWorkoutDraft,
         clearWorkoutDraft,
-        updateLog
+        updateLog,
+        setMachineSelection,
+        getMachineSelection,
+        updateCustomPlan,
+        duplicatePlan,
+        deleteCustomPlan,
+        getLastLoggedSession,
+        getExerciseStats
     };
 }
 

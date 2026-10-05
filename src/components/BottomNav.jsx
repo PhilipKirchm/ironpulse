@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Calendar, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Calendar, TrendingUp, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const BottomNav = ({ activeTab, onTabChange }) => {
@@ -33,6 +33,12 @@ export const BottomNav = ({ activeTab, onTabChange }) => {
                 label="Progress"
                 isActive={activeTab === 'stats'}
                 onClick={() => onTabChange('stats')}
+            />
+            <Tab
+                icon={<User size={24} />}
+                label="Profile"
+                isActive={activeTab === 'profile'}
+                onClick={() => onTabChange('profile')}
             />
         </div>
     );

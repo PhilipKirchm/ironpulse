@@ -1,9 +1,10 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Repeat, Trash2, Trophy, MoreHorizontal, Plus, X } from 'lucide-react';
+import { Check, Repeat, Trash2, Trophy, MoreHorizontal, Plus, X, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
+import { MACHINE_MANUFACTURERS } from '../data/exercises';
 
-export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onSwap, onRemove, pr, note, onUpdateNote }) => {
+export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onSwap, onRemove, pr, lastSession, note, onUpdateNote, machineSelection, onMachineChange }) => {
     const addSet = () => {
         onUpdateSets(exercise.id, [...sets, { weight: '', reps: '', done: false }]);
     };
@@ -25,23 +26,53 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
         onUpdateSets(exercise.id, newSets);
     }
 
+    const handleAutofillLastSession = () => {
+        if (lastSession && lastSession.sets && lastSession.sets.length > 0) {
+            const newSets = lastSession.sets.map(s => ({
+                weight: String(s.weight),
+                reps: String(s.reps),
+                done: false
+            }));
+            onUpdateSets(exercise.id, newSets);
+            if (lastSession.machine && onMachineChange) {
+                onMachineChange(lastSession.machine);
+            }
+        }
+    };
+
     return (
         <motion.div
             layout
             className="card"
             style={{ padding: '20px', marginBottom: '16px', position: 'relative' }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{exercise.name}</h3>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{exercise.muscle}</span>
                 </div>
-                {pr > 0 && propsHaveValues(sets) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 215, 0, 0.1)', color: '#FFD700', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: '600' }}>
-                        <Trophy size={12} /> {pr}kg
+                {pr > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 215, 0, 0.12)', color: '#FFD700', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                        <Trophy size={13} /> PR: {pr}kg
                     </div>
                 )}
             </div>
+
+            {!isEditing && lastSession && lastSession.sets && lastSession.sets.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(10, 132, 255, 0.08)', border: '1px solid rgba(10, 132, 255, 0.2)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                        <span style={{ color: 'var(--primary)', fontWeight: 600, marginRight: '4px' }}>Letztes Mal:</span>
+                        {lastSession.sets.map(s => `${s.weight}kg×${s.reps}`).join(' | ')}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleAutofillLastSession}
+                        style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                        <RotateCcw size={12} /> Übernehmen
+                    </button>
+                </div>
+            )}
 
             {isEditing ? (
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -54,6 +85,27 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
                 </div>
             ) : (
                 <div>
+                    <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', textTransform: 'uppercase' }}>Machine / Manufacturer</label>
+                        <select
+                            value={machineSelection || 'Free Weights'}
+                            onChange={(e) => onMachineChange && onMachineChange(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '8px 12px',
+                                background: 'var(--bg-card-highlight)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {MACHINE_MANUFACTURERS.map(mfg => (
+                                <option key={mfg} value={mfg}>{mfg}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr 40px 30px', gap: '8px', marginBottom: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                         <span style={{ textAlign: 'center' }}>#</span>
                         <span>kg</span>

@@ -21,10 +21,17 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             style={{ padding: '24px', paddingTop: '40px' }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                <h1 className="title-lg" style={{ margin: 0 }}>Summary</h1>
-                <button onClick={onOpenSettings} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '8px' }}>
-                    <Settings size={24} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Aktiver Trainingsplan</div>
+                    <h1 className="title-lg" style={{ margin: '2px 0 0 0', fontSize: '1.4rem' }}>{plan.name}</h1>
+                </div>
+                <button 
+                    onClick={onOpenSettings} 
+                    style={{ background: 'var(--bg-card-highlight)', border: '1px solid var(--border)', color: 'var(--primary)', borderRadius: '12px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                >
+                    <Settings size={18} />
+                    <span>Plan ändern</span>
                 </button>
             </div>
 
