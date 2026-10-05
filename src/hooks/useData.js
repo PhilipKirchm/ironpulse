@@ -263,7 +263,11 @@ export function useData() {
         return { pr, lastSession };
     };
 
-    const getPlan = () => getAllPlans().find(p => p.id === data.currentPlanId);
+    const getPlan = () => {
+        const all = getAllPlans();
+        if (!all || all.length === 0) return null;
+        return all.find(p => p.id === data.currentPlanId) || all[0];
+    };
 
     // Calendar-based scheduling for consistency
     const getCurrentDay = () => {
@@ -393,18 +397,24 @@ export function useData() {
 
     const getExercisesForDay = (planId, dayId) => {
         const allExercises = getAllExercises();
-        if (data.customOverrides && data.customOverrides[planId] && data.customOverrides[planId][dayId]) {
-            return data.customOverrides[planId][dayId].map(id => {
+        const allPlans = getAllPlans();
+        const plan = allPlans.find(p => p.id === planId) || getPlan();
+        if (!plan || !plan.days || plan.days.length === 0) return [];
+
+        if (data.customOverrides && data.customOverrides[plan.id] && data.customOverrides[plan.id][dayId]) {
+            return data.customOverrides[plan.id][dayId].map(id => {
                 const found = allExercises.find(e => e.id === id);
-                return found || { id, name: id, muscle: 'Other', type: 'Custom' };
+                return found || { id, name: id.replace(/_/g, ' '), muscle: 'Other', type: 'Custom' };
             }).filter(Boolean);
         }
-        const plan = getAllPlans().find(p => p.id === planId);
-        const day = plan?.days.find(d => d.id === dayId);
-        return day ? day.exercises.map(id => {
+
+        const day = plan.days.find(d => d.id === dayId) || plan.days[0];
+        if (!day || !day.exercises) return [];
+
+        return day.exercises.map(id => {
             const found = allExercises.find(e => e.id === id);
-            return found || { id, name: id, muscle: 'Other', type: 'Custom' };
-        }).filter(Boolean) : [];
+            return found || { id, name: id.replace(/_/g, ' '), muscle: 'Other', type: 'Custom' };
+        }).filter(Boolean);
     };
 
     const addExerciseToDay = () => {
