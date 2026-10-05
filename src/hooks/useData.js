@@ -1,7 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, createElement } from 'react';
 import { PLANS } from '../data/plans';
 import { EXERCISES as DEFAULT_EXERCISES } from '../data/exercises';
+
+const DataContext = createContext(null);
 
 const STORAGE_KEY_BASE = 'fitness_app_v4'; 
 const IS_TEST_BUILD = false; 
@@ -40,7 +42,7 @@ const INITIAL_DATA = {
     // Note: We merge DEFAULT_EXERCISES + customExercises in memory
 };
 
-export function useData() {
+function useDataProvider() {
     const [activeUser, setActiveUserState] = useState(getActiveUser);
 
     const [data, setData] = useState(() => {
@@ -538,6 +540,19 @@ export function useData() {
         getLastLoggedSession,
         getExerciseStats
     };
+}
+
+export function DataProvider({ children }) {
+    const value = useDataProvider();
+    return createElement(DataContext.Provider, { value }, children);
+}
+
+export function useData() {
+    const context = useContext(DataContext);
+    if (!context) {
+        throw new Error('useData must be used within a DataProvider');
+    }
+    return context;
 }
 
 // Seeding Logic
