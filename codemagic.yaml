@@ -6,7 +6,6 @@ workflows:
     environment:
       node: 22
       xcode: latest
-      cocoapods: default
     scripts:
       - name: Install Node dependencies
         script: npm install
@@ -17,43 +16,54 @@ workflows:
       - name: Sync Capacitor to iOS
         script: npx cap sync ios
 
-      - name: Install CocoaPods
+      - name: Show iOS project structure
         script: |
-          cd ios/App
-          pod install
+          echo "=== ios/App contents ==="
+          ls -la ios/App/
+          echo "=== Xcode projects/workspaces ==="
+          find ios/App -name "*.xcworkspace" -o -name "*.xcodeproj" | head -20
 
       - name: Build iOS (unsigned)
         script: |
           cd ios/App
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Debug \
-            -derivedDataPath build \
-            -destination "generic/platform=iOS Simulator" \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | xcpretty --color || true
 
-      - name: Archive & export IPA (unsigned)
-        script: |
-          cd ios/App
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -derivedDataPath build \
-            -archivePath build/IronPulse.xcarchive \
-            archive \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | xcpretty --color
+          # Use xcworkspace if it exists (SPM), otherwise xcodeproj
+          if [ -d "App.xcworkspace" ]; then
+            echo "Building with App.xcworkspace (SPM)"
+            xcodebuild \
+              -workspace App.xcworkspace \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -archivePath build/IronPulse.xcarchive \
+              -destination "generic/platform=iOS" \
+              archive \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          else
+            echo "Building with App.xcodeproj (SPM fallback)"
+            xcodebuild \
+              -project App.xcodeproj \
+              -scheme App \
+              -configuration Release \
+              -derivedDataPath build \
+              -archivePath build/IronPulse.xcarchive \
+              -destination "generic/platform=iOS" \
+              archive \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          fi
 
+          echo "=== Archive contents ==="
+          ls -la build/IronPulse.xcarchive/Products/Applications/ || true
+
+          # Copy .app for download
           mkdir -p build/ipa-export
           cp -r build/IronPulse.xcarchive/Products/Applications/App.app \
             build/ipa-export/ || true
+          echo "Build done!"
 
     artifacts:
       - ios/App/build/ipa-export/*.app
