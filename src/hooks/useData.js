@@ -181,23 +181,32 @@ export function useData() {
     };
 
     const updateCustomPlan = (planId, updatedPlan) => {
+        let activeId = planId;
+        const isCustom = (data.customPlans || []).some(p => p.id === planId);
+
+        if (!isCustom) {
+            // Convert built-in plan edit into a new custom plan
+            activeId = `custom_${Date.now()}`;
+        }
+
         setData(prev => {
-            const isCustom = (prev.customPlans || []).some(p => p.id === planId);
             if (isCustom) {
                 return {
                     ...prev,
-                    customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p)
+                    customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p),
+                    currentPlanId: planId
                 };
             } else {
-                // If editing a built-in plan, convert it to a custom plan
-                const newCustomPlan = { ...updatedPlan, id: `custom_${Date.now()}` };
+                const newCustomPlan = { ...updatedPlan, id: activeId };
                 return {
                     ...prev,
                     customPlans: [...(prev.customPlans || []), newCustomPlan],
-                    currentPlanId: newCustomPlan.id
+                    currentPlanId: activeId
                 };
             }
         });
+
+        return activeId;
     };
 
     const duplicatePlan = (planId) => {

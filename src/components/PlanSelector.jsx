@@ -98,13 +98,15 @@ export const PlanSelector = ({ onSelect }) => {
       days: planForm.days
     };
 
+    let activePlanId = editingPlanId;
     if (editingPlanId === 'NEW') {
       const created = addCustomPlan(payload);
-      if (onSelect && created) onSelect(created.id);
+      if (created) activePlanId = created.id;
     } else {
-      updateCustomPlan(editingPlanId, payload);
-      if (onSelect) onSelect(editingPlanId);
+      activePlanId = updateCustomPlan(editingPlanId, payload);
     }
+
+    if (onSelect && activePlanId) onSelect(activePlanId);
     setEditingPlanId(null);
   };
 

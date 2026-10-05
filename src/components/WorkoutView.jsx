@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ExerciseCard } from './ExerciseCard';
 import { useData } from '../hooks/useData';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Edit2, Check, Search, X, Plus, Save } from 'lucide-react';
+import { ChevronLeft, Edit2, Check, Search, X, Plus, Save, Moon } from 'lucide-react';
 import { MUSCLE_GROUPS } from '../data/exercises';
 import confetti from 'canvas-confetti';
 
@@ -287,6 +287,15 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         onMachineChange={(mfg) => handleMachineChange(ex.id, mfg)}
                     />
                 ))}
+                {exercises.length === 0 && (
+                    <div className="card" style={{ padding: '32px 20px', textAlign: 'center', margin: '10px 0' }}>
+                        <Moon size={36} color="var(--primary)" style={{ marginBottom: 12 }} />
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>Ruhetag oder keine Übungen</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: 0 }}>
+                            Für diesen Tag sind noch keine Übungen eingetragen. Du kannst unten neue Übungen hinzufügen.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Add Exercise Button */}
