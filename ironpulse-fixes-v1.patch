@@ -1,0 +1,712 @@
+diff --git a/src/components/BottomNav.jsx b/src/components/BottomNav.jsx
+index e806b42..900e20d 100644
+--- a/src/components/BottomNav.jsx
++++ b/src/components/BottomNav.jsx
+@@ -18,25 +18,25 @@ export const BottomNav = ({ activeTab, onTabChange }) => {
+         }}>
+             <Tab
+                 icon={<Calendar size={24} />}
+-                label="Calendar"
++                label="Kalender"
+                 isActive={activeTab === 'calendar'}
+                 onClick={() => onTabChange('calendar')}
+             />
+             <Tab
+                 icon={<LayoutDashboard size={24} />}
+-                label="Workout"
++                label="Training"
+                 isActive={activeTab === 'dashboard'}
+                 onClick={() => onTabChange('dashboard')}
+             />
+             <Tab
+                 icon={<TrendingUp size={24} />}
+-                label="Progress"
++                label="Fortschritt"
+                 isActive={activeTab === 'stats'}
+                 onClick={() => onTabChange('stats')}
+             />
+             <Tab
+                 icon={<User size={24} />}
+-                label="Profile"
++                label="Profil"
+                 isActive={activeTab === 'profile'}
+                 onClick={() => onTabChange('profile')}
+             />
+diff --git a/src/components/CalendarView.jsx b/src/components/CalendarView.jsx
+index ae33dcf..cb32fb3 100644
+--- a/src/components/CalendarView.jsx
++++ b/src/components/CalendarView.jsx
+@@ -90,7 +90,7 @@ export const CalendarView = ({ onEditWorkout }) => {
+                     }}
+                 >
+                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
+-                    DELOAD WEEK
++                    DELOAD-WOCHE
+                 </motion.div>
+             )}
+ 
+@@ -170,12 +170,8 @@ export const CalendarView = ({ onEditWorkout }) => {
+                                 {selectedLog.dayId.replace(/_/g, ' ').toUpperCase()}
+                             </div>
+                             <div style={{ display: 'flex', gap: '8px' }}>
+-                                <button onClick={() => onEditWorkout(selectedLog)} style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>
+-                                    EDIT
+-                                </button>
+-                                <div style={{ background: 'var(--accent)', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>
+-                                    COMPLETED
+-                                </div>
++                                <button onClick={() => onEditWorkout(selectedLog)} style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>BEARBEITEN</button>
++                                <div style={{ background: 'var(--accent)', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>ERLEDIGT</div>
+                             </div>
+                         </div>
+ 
+@@ -202,9 +198,9 @@ export const CalendarView = ({ onEditWorkout }) => {
+                 ) : (
+                     <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border)', background: 'transparent' }}>
+                         {isRestDayName(getWorkoutForDate(selectedDate)?.name) ? (
+-                            <p>Rest day. No workout logged.</p>
++                            <p>Ruhetag. Kein Training eingetragen.</p>
+                         ) : (
+-                            <p>No workout completed for this day yet.</p>
++                            <p>An diesem Tag ist noch kein Training eingetragen.</p>
+                         )}
+                     </div>
+                 )}
+@@ -212,10 +208,10 @@ export const CalendarView = ({ onEditWorkout }) => {
+ 
+             <div className="card" style={{ marginTop: '20px', padding: '16px', border: '1px solid var(--border)', marginBottom: '10px' }}>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+-                    <LegendItem icon="🔥" label="Planned" />
+-                    <LegendItem icon="✅" label="Completed" />
+-                    <LegendItem icon="☕" label="Rest" />
+-                    <LegendItem color="var(--primary)" label="Selected" />
++                    <LegendItem icon="🔥" label="Geplant" />
++                    <LegendItem icon="✅" label="Erledigt" />
++                    <LegendItem icon="☕" label="Ruhetag" />
++                    <LegendItem color="var(--primary)" label="Ausgewählt" />
+                 </div>
+             </div>
+         </motion.div>
+diff --git a/src/components/Dashboard.jsx b/src/components/Dashboard.jsx
+index 8704de3..9cd2711 100644
+--- a/src/components/Dashboard.jsx
++++ b/src/components/Dashboard.jsx
+@@ -2,7 +2,8 @@
+ import { useData } from '../hooks/useData';
+ import { useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+-import { isRestDayName } from '../data/plans';
++import { isRestDayName, dayLabel } from '../data/plans';
++import { muscleLabel } from '../data/exercises';
+ import { Settings, Play, Dumbbell, Calendar, ChevronRight, ChevronDown, Check } from 'lucide-react';
+ 
+ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+@@ -40,20 +41,20 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+                 {isCompleted ? (
+                     <div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 700 }}>
+-                            <Check size={16} /> WORKOUT COMPLETED!
++                            <Check size={16} /> TRAINING ABGESCHLOSSEN!
+                         </div>
+-                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>{currentDay?.name}</h2>
++                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>{dayLabel(currentDay?.name)}</h2>
+                         <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0' }} />
+-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px', fontWeight: 600 }}>NEXT UP</div>
+-                        <h3 style={{ fontSize: '1.2rem', margin: '0 0 10px 0' }}>{nextDay?.name}</h3>
+-                        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 0 }}>Great job! Stay consistent.</p>
++                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px', fontWeight: 600 }}>ALS NÄCHSTES</div>
++                        <h3 style={{ fontSize: '1.2rem', margin: '0 0 10px 0' }}>{dayLabel(nextDay?.name)}</h3>
++                        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 0 }}>Stark! Bleib dran.</p>
+                     </div>
+                 ) : (
+                     <>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
+-                            <Calendar size={16} /> TODAYS WORKOUT
++                            <Calendar size={16} /> HEUTIGES TRAINING
+                         </div>
+-                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 24px 0', letterSpacing: '-0.5px' }}>{currentDay?.name}</h2>
++                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 24px 0', letterSpacing: '-0.5px' }}>{dayLabel(currentDay?.name)}</h2>
+ 
+                         {isRestDay ? (
+                             <div>
+@@ -66,7 +67,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+                                 style={{ width: '100%' }}
+                                 onClick={onStartWorkout}
+                             >
+-                                <Play size={20} fill="white" /> Start Workout
++                                <Play size={20} fill="white" /> Training starten
+                             </motion.button>
+                         )}
+                     </>
+@@ -75,7 +76,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+ 
+             <div>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+-                    <h3 className="subtitle">Personal Records</h3>
++                    <h3 className="subtitle">Persönliche Rekorde</h3>
+                 </div>
+ 
+                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+@@ -102,7 +103,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+                                     >
+                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                             <Dumbbell size={18} color="var(--primary)" />
+-                                            {muscle} <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>({prs.length})</span>
++                                            {muscleLabel(muscle)} <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>({prs.length})</span>
+                                         </div>
+                                         <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
+                                             <ChevronDown size={20} color="var(--text-secondary)" />
+@@ -139,7 +140,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+                 </div>
+                 {Object.keys(data.prs).length === 0 && (
+                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+-                        No data yet.
++                        Noch keine Daten.
+                     </div>
+                 )}
+             </div>
+diff --git a/src/components/ExerciseCard.jsx b/src/components/ExerciseCard.jsx
+index 0c4db61..d01c4c8 100644
+--- a/src/components/ExerciseCard.jsx
++++ b/src/components/ExerciseCard.jsx
+@@ -2,7 +2,7 @@
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { Check, Repeat, Trash2, Trophy, MoreHorizontal, Plus, X, RotateCcw } from 'lucide-react';
+ import { useState } from 'react';
+-import { MACHINE_MANUFACTURERS } from '../data/exercises';
++import { MACHINE_MANUFACTURERS, muscleLabel, machineLabel } from '../data/exercises';
+ 
+ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onSwap, onRemove, pr, lastSession, note, onUpdateNote, machineSelection, onMachineChange, onSetCompleted }) => {
+     const addSet = () => {
+@@ -49,7 +49,7 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                 <div>
+                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{exercise.name}</h3>
+-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{exercise.muscle}</span>
++                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{muscleLabel(exercise.muscle)}</span>
+                 </div>
+                 {pr > 0 && (
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 215, 0, 0.12)', color: '#FFD700', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
+@@ -77,16 +77,16 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
+             {isEditing ? (
+                 <div style={{ display: 'flex', gap: '8px' }}>
+                     <button className="btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={onSwap}>
+-                        <Repeat size={16} /> Replace
++                        <Repeat size={16} /> Tauschen
+                     </button>
+                     <button className="btn-secondary" style={{ flex: 1, background: 'rgba(255, 69, 58, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={onRemove}>
+-                        <Trash2 size={16} /> Remove
++                        <Trash2 size={16} /> Entfernen
+                     </button>
+                 </div>
+             ) : (
+                 <div>
+                     <div style={{ marginBottom: '12px' }}>
+-                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', textTransform: 'uppercase' }}>Machine / Manufacturer</label>
++                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', textTransform: 'uppercase' }}>Gerät / Hersteller</label>
+                         <select
+                             value={machineSelection || 'Free Weights'}
+                             onChange={(e) => onMachineChange && onMachineChange(e.target.value)}
+@@ -102,14 +102,14 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
+                             }}
+                         >
+                             {MACHINE_MANUFACTURERS.map(mfg => (
+-                                <option key={mfg} value={mfg}>{mfg}</option>
++                                <option key={mfg} value={mfg}>{machineLabel(mfg)}</option>
+                             ))}
+                         </select>
+                     </div>
+                     <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr 1fr 40px 30px', gap: '8px', marginBottom: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
+                         <span style={{ textAlign: 'center' }}>#</span>
+                         <span>kg</span>
+-                        <span>Reps</span>
++                        <span>Wdh.</span>
+                         <span style={{ textAlign: 'center' }}></span>
+                         <span></span>
+                     </div>
+@@ -160,7 +160,7 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
+                                 <button
+                                     onClick={() => removeSet(i)}
+                                     style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
+-                                    aria-label="Remove set"
++                                    aria-label="Satz entfernen"
+                                 >
+                                     <X size={16} />
+                                 </button>
+@@ -171,12 +171,12 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
+                         onClick={addSet}
+                         style={{ width: '100%', padding: '10px', background: 'transparent', color: 'var(--primary)', fontWeight: '600', border: 'none', cursor: 'pointer', marginTop: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', gap: '6px' }}
+                     >
+-                        <Plus size={16} /> Add Set
++                        <Plus size={16} /> Satz hinzufügen
+                     </button>
+ 
+                     <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                         <textarea
+-                            placeholder="Add notes..."
++                            placeholder="Notizen hinzufügen…"
+                             value={note || ''}
+                             onChange={(e) => onUpdateNote && onUpdateNote(e.target.value)}
+                             style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem', resize: 'none', outline: 'none', fontFamily: 'inherit' }}
+diff --git a/src/components/HistoryView.jsx b/src/components/HistoryView.jsx
+index f70b684..f456a19 100644
+--- a/src/components/HistoryView.jsx
++++ b/src/components/HistoryView.jsx
+@@ -16,7 +16,7 @@ export const HistoryView = ({ onEditWorkout }) => {
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             style={{ padding: '24px', paddingBottom: '100px' }}
+         >
+-            <h1 className="title-lg" style={{ paddingTop: '40px' }}>History</h1>
++            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Verlauf</h1>
+ 
+             <div style={{ display: 'grid', gap: '16px', marginTop: '24px' }}>
+                 {sortedLogs.map((log, i) => {
+@@ -43,14 +43,12 @@ export const HistoryView = ({ onEditWorkout }) => {
+                                     {dayId.replace(/_/g, ' ').toUpperCase()}
+                                 </div>
+                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+-                                    {log.exercises.length} Exercises Completed
++                                    {log.exercises.length} Übungen
+                                 </div>
+                             </div>
+ 
+                             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+-                                <button onClick={() => onEditWorkout(log)} style={{ background: 'transparent', color: 'var(--primary)', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '4px 8px' }}>
+-                                    Edit
+-                                </button>
++                                <button onClick={() => onEditWorkout(log)} style={{ background: 'transparent', color: 'var(--primary)', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '4px 8px' }}>Bearbeiten</button>
+                                 <div style={{ color: 'var(--accent)' }}>
+                                     <CheckCircle2 />
+                                 </div>
+@@ -62,7 +60,7 @@ export const HistoryView = ({ onEditWorkout }) => {
+                 {sortedLogs.length === 0 && (
+                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                         <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+-                        <p>No workouts logged yet. Go make history!</p>
++                        <p>Noch keine Workouts eingetragen. Zeit für das erste!</p>
+                     </div>
+                 )}
+             </div>
+diff --git a/src/components/Login.jsx b/src/components/Login.jsx
+index 5f055b6..bab3194 100644
+--- a/src/components/Login.jsx
++++ b/src/components/Login.jsx
+@@ -10,11 +10,11 @@ export const Login = ({ registerUser, loginUser }) => {
+         e.preventDefault();
+         setError(null);
+         if (mode === 'register') {
+-            const res = registerUser ? registerUser(name.trim(), password) : { ok: false, error: 'No register function' };
+-            if (!res.ok) setError(res.error || 'Unable to register');
++            const res = registerUser ? registerUser(name.trim(), password) : { ok: false, error: 'Registrierung nicht verfügbar' };
++            if (!res.ok) setError(res.error || 'Registrierung fehlgeschlagen');
+         } else {
+-            const res = loginUser ? loginUser(name.trim(), password) : { ok: false, error: 'No login function' };
+-            if (!res.ok) setError(res.error || 'Login failed');
++            const res = loginUser ? loginUser(name.trim(), password) : { ok: false, error: 'Anmeldung nicht verfügbar' };
++            if (!res.ok) setError(res.error || 'Anmeldung fehlgeschlagen');
+         }
+     };
+ 
+@@ -22,17 +22,17 @@ export const Login = ({ registerUser, loginUser }) => {
+         <div className="scroll-container" style={{ padding: 24, paddingTop: 64, height: '100%', boxSizing: 'border-box' }}>
+             <div style={{ maxWidth: 420, margin: '18px auto' }}>
+                 <div className="card" style={{ padding: 20 }}>
+-                    <h1 style={{ margin: 0, textAlign: 'center' }}>{mode === 'register' ? 'Create Account' : 'Sign In'}</h1>
+-                    <p className="subtitle" style={{ textAlign: 'center', marginTop: 6 }}>{mode === 'register' ? 'Create a name and password to get started' : 'Sign in with your name and password'}</p>
++                    <h1 style={{ margin: 0, textAlign: 'center' }}>{mode === 'register' ? 'Konto erstellen' : 'Anmelden'}</h1>
++                    <p className="subtitle" style={{ textAlign: 'center', marginTop: 6 }}>{mode === 'register' ? 'Wähle einen Namen und ein Passwort, um zu starten' : 'Melde dich mit Name und Passwort an'}</p>
+ 
+                     <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                         <input className="input-field" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+-                        <input className="input-field" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
++                        <input className="input-field" placeholder="Passwort" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+                         {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+ 
+-                        <button type="submit" className="btn-primary">{mode === 'register' ? 'Register' : 'Login'}</button>
++                        <button type="submit" className="btn-primary">{mode === 'register' ? 'Registrieren' : 'Anmelden'}</button>
+                         <button type="button" className="btn-secondary" onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>
+-                            {mode === 'register' ? 'Already have an account? Sign in' : "Don't have an account? Register"}
++                            {mode === 'register' ? 'Schon ein Konto? Anmelden' : 'Noch kein Konto? Registrieren'}
+                         </button>
+                     </form>
+                 </div>
+diff --git a/src/components/PlanSelector.jsx b/src/components/PlanSelector.jsx
+index f93796f..09d762e 100644
+--- a/src/components/PlanSelector.jsx
++++ b/src/components/PlanSelector.jsx
+@@ -2,7 +2,7 @@ import React, { useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { ChevronRight, Edit2, Copy, Trash2, Plus, Search, X, Dumbbell, ArrowLeft, Zap, Moon } from 'lucide-react';
+ import { useData } from '../hooks/useData';
+-import { MUSCLE_GROUPS } from '../data/exercises';
++import { MUSCLE_GROUPS, muscleLabel, typeLabel } from '../data/exercises';
+ import { getSuggestedExercisesForDayName } from '../data/plans';
+ 
+ const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+@@ -307,12 +307,12 @@ export const PlanSelector = ({ onSelect }) => {
+                         <option value="Rest">🌙 Rest – Ruhetag</option>
+                         <option value="Push">💪 Push</option>
+                         <option value="Pull">🔄 Pull</option>
+-                        <option value="Legs">🦵 Legs</option>
+-                        <option value="Upper">⬆️ Upper</option>
+-                        <option value="Lower">⬇️ Lower</option>
+-                        <option value="Chest & Back">🏋️ Chest &amp; Back</option>
+-                        <option value="Shoulders & Arms">💎 Shoulders &amp; Arms</option>
+-                        <option value="Fullbody">🔥 Fullbody</option>
++                        <option value="Legs">🦵 Beine (Legs)</option>
++                        <option value="Upper">⬆️ Oberkörper (Upper)</option>
++                        <option value="Lower">⬇️ Unterkörper (Lower)</option>
++                        <option value="Chest & Back">🏋️ Brust &amp; Rücken</option>
++                        <option value="Shoulders & Arms">💎 Schultern &amp; Arme</option>
++                        <option value="Fullbody">🔥 Ganzkörper</option>
+                         <option value="Cardio">🏃 Cardio</option>
+                         {/* Custom name if none of the above */}
+                         {!['Rest','Push','Pull','Legs','Upper','Lower','Chest & Back','Shoulders & Arms','Fullbody','Cardio'].includes(day.name) && !rest && (
+@@ -351,7 +351,7 @@ export const PlanSelector = ({ onSelect }) => {
+                         {day.exercises.map((exId, exIdx) => {
+                           const foundEx = allExercises.find(e => e.id === exId);
+                           const exName = foundEx ? foundEx.name : exId.replace(/_/g, ' ');
+-                          const muscle = foundEx ? foundEx.muscle : 'Andere';
++                          const muscle = foundEx ? muscleLabel(foundEx.muscle) : 'Andere';
+                           return (
+                             <div key={`${exId}-${exIdx}`} style={{
+                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+@@ -430,7 +430,7 @@ export const PlanSelector = ({ onSelect }) => {
+                   background: selectedMuscle === m ? 'var(--primary)' : 'var(--bg-card-highlight)',
+                   color: selectedMuscle === m ? '#fff' : 'var(--text-secondary)'
+                 }}>
+-                  {m === 'ALL' ? 'ALLE' : m}
++                  {m === 'ALL' ? 'ALLE' : muscleLabel(m)}
+                 </button>
+               ))}
+             </div>
+@@ -443,7 +443,7 @@ export const PlanSelector = ({ onSelect }) => {
+                     onClick={() => handleAddExerciseToDay(ex.id)}>
+                     <div>
+                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{ex.name}</div>
+-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ex.muscle} · {ex.type}</div>
++                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{muscleLabel(ex.muscle)} · {typeLabel(ex.type)}</div>
+                     </div>
+                     <Plus size={18} color="var(--primary)" />
+                   </button>
+diff --git a/src/components/ProfileView.jsx b/src/components/ProfileView.jsx
+index bf5383e..8457dce 100644
+--- a/src/components/ProfileView.jsx
++++ b/src/components/ProfileView.jsx
+@@ -59,20 +59,20 @@ export const ProfileView = () => {
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             style={{ padding: '24px', paddingBottom: '100px' }}
+         >
+-            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Profile</h1>
++            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Profil</h1>
+ 
+             <div className="card" style={{ padding: '24px', marginTop: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                 <div style={{ background: 'var(--bg-card-highlight)', width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                     <User size={40} color="var(--primary)" />
+                 </div>
+-                <h2 style={{ margin: '0 0 8px 0' }}>{data.user?.name || 'Workout Enthusiast'}</h2>
++                <h2 style={{ margin: '0 0 8px 0' }}>{data.user?.name || 'Sportler'}</h2>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+-                    <Shield size={16} /> Data is secured locally on this device
++                    <Shield size={16} /> Daten werden nur lokal auf diesem Gerät gespeichert
+                 </div>
+ 
+                 <div style={{ width: '100%', borderTop: '1px solid var(--border)', paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+-                        <span style={{ color: 'var(--text-secondary)' }}>Total Workouts</span>
++                        <span style={{ color: 'var(--text-secondary)' }}>Workouts insgesamt</span>
+                         <span style={{ fontWeight: 'bold' }}>{(data.logs || []).length}</span>
+                     </div>
+                 </div>
+@@ -116,7 +116,7 @@ export const ProfileView = () => {
+                 onClick={logoutUser} 
+                 style={{ width: '100%', marginTop: '24px', color: 'var(--danger)', background: 'rgba(255, 69, 58, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+             >
+-                <LogOut size={20} /> Sign Out
++                <LogOut size={20} /> Abmelden
+             </button>
+         </motion.div>
+     );
+diff --git a/src/components/StatsView.jsx b/src/components/StatsView.jsx
+index 70b64ab..8cfdead 100644
+--- a/src/components/StatsView.jsx
++++ b/src/components/StatsView.jsx
+@@ -59,7 +59,7 @@ export const StatsView = () => {
+             if (best1RM === 0) return null;
+ 
+             return {
+-                date: new Date(log.date).toLocaleDateString(),
++                date: new Date(log.date).toLocaleDateString('de-AT'),
+                 weight: Math.round(best1RM),
+                 actualWeight: bestWeight,
+                 actualReps: bestReps,
+@@ -87,25 +87,25 @@ export const StatsView = () => {
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             style={{ padding: '24px', paddingBottom: '100px' }}
+         >
+-            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Progress</h1>
++            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Fortschritt</h1>
+ 
+             {/* Goals Section */}
+             <div className="card" style={{ padding: '24px', marginBottom: '24px', background: 'linear-gradient(135deg, var(--bg-card) 0%, #2c2c2e 100%)' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+-                        <Target color="var(--accent)" /> Goals
++                        <Target color="var(--accent)" /> Ziele
+                     </h3>
+                     <button
+                         onClick={() => isEditingGoals ? handleSaveGoals() : setIsEditingGoals(true)}
+                         style={{ background: isEditingGoals ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                     >
+-                        {isEditingGoals ? 'Save' : 'Edit'}
++                        {isEditingGoals ? 'Speichern' : 'Bearbeiten'}
+                     </button>
+                 </div>
+ 
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px' }}>
+                     <div>
+-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Bodyweight</div>
++                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Körpergewicht</div>
+                         {isEditingGoals ? (
+                             <input
+                                 className="input-field"
+@@ -123,7 +123,7 @@ export const StatsView = () => {
+                         )}
+                     </div>
+                     <div style={{ textAlign: 'right' }}>
+-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Target</div>
++                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Zielgewicht</div>
+                         {isEditingGoals ? (
+                             <input
+                                 className="input-field"
+@@ -146,7 +146,7 @@ export const StatsView = () => {
+             <div className="card" style={{ padding: '24px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+-                        <TrendingUp color="var(--primary)" /> Strength
++                        <TrendingUp color="var(--primary)" /> Kraft
+                     </h3>
+                     <select
+                         value={selectedExercise}
+@@ -160,7 +160,7 @@ export const StatsView = () => {
+                                 <option key={id} value={id}>{found ? found.name : id.replace(/_/g, ' ')}</option>
+                             );
+                         })}
+-                        {availableExercisesIds.length === 0 && <option>No Data</option>}
++                        {availableExercisesIds.length === 0 && <option>Keine Daten</option>}
+                     </select>
+                 </div>
+ 
+@@ -177,8 +177,8 @@ export const StatsView = () => {
+                                             return (
+                                                 <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '12px', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
+                                                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '4px' }}>{label}</div>
+-                                                    <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>{data.weight} kg <span style={{fontSize: '0.7rem', color: 'var(--text-tertiary)'}}>(Est. 1RM)</span></div>
+-                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Best Set: {data.actualWeight}kg × {data.actualReps}</div>
++                                                    <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>{data.weight} kg <span style={{fontSize: '0.7rem', color: 'var(--text-tertiary)'}}>(geschätztes 1RM)</span></div>
++                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Bester Satz: {data.actualWeight}kg × {data.actualReps}</div>
+                                                 </div>
+                                             );
+                                         }
+@@ -194,8 +194,8 @@ export const StatsView = () => {
+                                 <TrendingUp size={20} />
+                             </div>
+                             <span style={{ fontSize: '0.9rem', textAlign: 'center' }}>
+-                                No workout data recorded yet.<br />
+-                                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Log a workout to see your progress!</span>
++                                Noch keine Trainingsdaten.<br />
++                                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Trage ein Workout ein, um deinen Fortschritt zu sehen!</span>
+                             </span>
+                         </div>
+                     )}
+diff --git a/src/components/WorkoutView.jsx b/src/components/WorkoutView.jsx
+index 5bca948..a6b4a3e 100644
+--- a/src/components/WorkoutView.jsx
++++ b/src/components/WorkoutView.jsx
+@@ -5,7 +5,7 @@ import { ExerciseCard } from './ExerciseCard';
+ import { useData } from '../hooks/useData';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { ChevronLeft, Edit2, Check, Search, X, Plus, Save, Moon } from 'lucide-react';
+-import { MUSCLE_GROUPS } from '../data/exercises';
++import { MUSCLE_GROUPS, muscleLabel, typeLabel } from '../data/exercises';
+ import confetti from 'canvas-confetti';
+ 
+ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+@@ -299,15 +299,15 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+         >
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', marginTop: '10px' }}>
+                 <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '1rem', fontWeight: 500 }}>
+-                    <ChevronLeft size={20} /> Back
++                    <ChevronLeft size={20} /> Zurück
+                 </button>
+-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Active Workout</h2>
++                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Aktives Training</h2>
+                 <button
+                     onClick={() => setIsEditing(!isEditing)}
+                     style={{ background: isEditing ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: isEditing ? 'white' : 'var(--text-main)', border: 'none', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                 >
+                     {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
+-                    {isEditing ? 'Done' : 'Edit'}
++                    {isEditing ? 'Fertig' : 'Bearbeiten'}
+                 </button>
+             </div>
+ 
+@@ -347,7 +347,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                 className="card"
+                 style={{ width: '100%', marginTop: '16px', padding: '16px', border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+             >
+-                <Plus /> Add Exercise
++                <Plus /> Übung hinzufügen
+             </button>
+ 
+             {!isEditing && (
+@@ -359,7 +359,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                         onClick={handleFinish}
+                         disabled={isSaving}
+                     >
+-                        {editLog ? 'Save Edit' : 'Finish Workout'}
++                        {editLog ? 'Änderung speichern' : 'Training beenden'}
+                     </motion.button>
+                 </div>
+             )}
+@@ -388,17 +388,17 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                     autoFocus
+                                     className="input-field"
+                                     style={{ paddingLeft: '40px' }}
+-                                    placeholder={isCreating ? "New Exercise Name" : "Search exercises..."}
++                                    placeholder={isCreating ? "Name der neuen Übung" : "Übung suchen…"}
+                                     value={isCreating ? newExerciseName : searchQuery}
+                                     onChange={(e) => isCreating ? setNewExerciseName(e.target.value) : setSearchQuery(e.target.value)}
+                                 />
+                             </div>
+-                            <button onClick={() => setSwappingId(null)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
++                            <button onClick={() => setSwappingId(null)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
+                         </div>
+ 
+                         {isCreating ? (
+                             <div style={{ padding: '20px' }}>
+-                                <div style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Muscle Group</div>
++                                <div style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Muskelgruppe</div>
+                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
+                                     {MUSCLE_GROUPS.map(m => (
+                                         <button
+@@ -413,7 +413,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                                 fontWeight: 500
+                                             }}
+                                         >
+-                                            {m}
++                                            {muscleLabel(m)}
+                                         </button>
+                                     ))}
+                                 </div>
+@@ -422,7 +422,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                     style={{ width: '100%' }}
+                                     onClick={handleCreateCustom}
+                                 >
+-                                    <Save size={18} /> Save & Add
++                                    <Save size={18} /> Speichern & hinzufügen
+                                 </button>
+                             </div>
+                         ) : (
+@@ -433,12 +433,12 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                         className="card"
+                                         style={{ width: '100%', padding: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(10, 132, 255, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
+                                     >
+-                                        <Plus size={20} /> Create "{searchQuery}"
++                                        <Plus size={20} /> „{searchQuery}“ erstellen
+                                     </button>
+                                 )}
+ 
+                                 <div style={{ padding: '16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+-                                    {searchQuery ? 'SEARCH RESULTS' : (currentSwapExercise ? `SUGGESTED (${currentSwapExercise?.muscle.toUpperCase()})` : 'ALL EXERCISES')}
++                                    {searchQuery ? 'SUCHERGEBNISSE' : (currentSwapExercise ? `VORSCHLÄGE (${muscleLabel(currentSwapExercise?.muscle).toUpperCase()})` : 'ALLE ÜBUNGEN')}
+                                 </div>
+                                 <div style={{ display: 'grid', gap: '8px' }}>
+                                     {filteredExercises.map(ex => (
+@@ -450,7 +450,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                         >
+                                             <div>
+                                                 <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ex.name}</div>
+-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ex.muscle} • {ex.type}</div>
++                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{muscleLabel(ex.muscle)} • {typeLabel(ex.type)}</div>
+                                             </div>
+                                             {swappingId !== 'NEW' ?
+                                                 <ChevronLeft size={16} style={{ transform: 'rotate(180deg)', color: 'var(--text-tertiary)' }} /> :
+@@ -459,7 +459,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
+                                         </button>
+                                     ))}
+                                     {filteredExercises.length === 0 && !searchQuery && (
+-                                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px' }}>No exercises found.</div>
++                                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px' }}>Keine Übungen gefunden.</div>
+                                     )}
+                                 </div>
+                             </div>
+diff --git a/src/data/exercises.js b/src/data/exercises.js
+index 912e447..d4799f5 100644
+--- a/src/data/exercises.js
++++ b/src/data/exercises.js
+@@ -150,4 +150,16 @@ export const EXERCISES = [
+     { id: 'russian_twist', name: 'Russian Twist', muscle: 'Abs', type: 'Isolation', substitutes: [] }
+ ];
+ 
++// Anzeigenamen (die gespeicherten Werte bleiben englisch, damit alte Daten weiter passen)
++export const MUSCLE_LABELS = {
++    Chest: 'Brust', Back: 'Rücken', Shoulders: 'Schultern', Biceps: 'Bizeps', Triceps: 'Trizeps',
++    Forearms: 'Unterarme', Quads: 'Quadrizeps', Hamstrings: 'Beinbeuger', Glutes: 'Gesäß',
++    Calves: 'Waden', Abs: 'Bauch', Other: 'Andere'
++};
++export const TYPE_LABELS = { Compound: 'Grundübung', Isolation: 'Isolationsübung', Custom: 'Eigene Übung' };
++export const MACHINE_LABELS = { 'Free Weights': 'Freie Gewichte', Other: 'Andere' };
++export const muscleLabel = (m) => MUSCLE_LABELS[m] || m || '';
++export const typeLabel = (t) => TYPE_LABELS[t] || t || '';
++export const machineLabel = (m) => MACHINE_LABELS[m] || m || '';
++
+ export const getExerciseById = (id) => EXERCISES.find(e => e.id === id);
+diff --git a/src/data/plans.js b/src/data/plans.js
+index 1c249a6..7d3a225 100644
+--- a/src/data/plans.js
++++ b/src/data/plans.js
+@@ -50,6 +50,9 @@ export const isRestDayName = (dayName) => {
+     return n === '' || n.includes('rest') || n.includes('pause') || n.includes('ruhetag');
+ };
+ 
++/** Anzeigename fuer Tage (der gespeicherte Name bleibt unveraendert) */
++export const dayLabel = (name) => ((name || '').trim().toLowerCase() === 'rest' ? 'Ruhetag' : name);
++
+ export const getSuggestedExercisesForDayName = (dayName) => {
+     const name = (dayName || '').toLowerCase().trim();
+     if (!name) return [];
+diff --git a/src/hooks/useData.js b/src/hooks/useData.js
+index bfbd9d5..0b5a161 100644
+--- a/src/hooks/useData.js
++++ b/src/hooks/useData.js
+@@ -138,9 +138,9 @@ function useDataProvider() {
+     }
+ 
+     const registerUser = (name, password) => {
+-        if (!name) return { ok: false, error: 'Name required' };
++        if (!name) return { ok: false, error: 'Name erforderlich' };
+         const users = getGlobalUsers();
+-        if (users[name]) return { ok: false, error: 'User already exists' };
++        if (users[name]) return { ok: false, error: 'Dieser Name ist bereits vergeben' };
+         
+         users[name] = password;
+         setGlobalUsers(users);
+@@ -154,7 +154,7 @@ function useDataProvider() {
+     };
+ 
+     const loginUser = (name, password) => {
+-        if (!name) return { ok: false, error: 'Name required' };
++        if (!name) return { ok: false, error: 'Name erforderlich' };
+         const users = getGlobalUsers();
+         
+         // Fallback to exactly one global storage item if it exists
+@@ -175,7 +175,7 @@ function useDataProvider() {
+             setTimeout(() => window.location.reload(), 50);
+             return { ok: true };
+         }
+-        return { ok: false, error: 'Invalid credentials' };
++        return { ok: false, error: 'Name oder Passwort falsch' };
+     };
+ 
+     const logoutUser = () => {
