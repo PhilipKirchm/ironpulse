@@ -31,7 +31,7 @@ export const MUSCLE_GROUPS = [
 export const EXERCISES = [
     // --- CHEST ---
     { id: 'bench_press', name: 'Barbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['dumbbell_press', 'machine_chest_press', 'smith_bench_press'], machines: ['Free Weights'] },
-    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Technogym', 'Gym 80 Panata', 'Rogue', 'Other'] },
+    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Technogym', 'Gym80', 'Panata', 'Rogue', 'Other'] },
     { id: 'dumbbell_press', name: 'Dumbbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Free Weights'] },
     { id: 'incline_bench_press', name: 'Incline Barbell Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_dumbell_press', 'smith_incline_press'] },
     { id: 'smith_incline_press', name: 'Incline Smith Machine Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_bench_press'] },
@@ -67,11 +67,11 @@ export const EXERCISES = [
     { id: 'dumbbell_pullover', name: 'Dumbbell Pullover', muscle: 'Back', type: 'Isolation', substitutes: ['lat_prayer'] },
     { id: 'face_pull', name: 'Face Pull', muscle: 'Shoulders', type: 'Isolation', substitutes: ['reverse_pec_deck'] },
     { id: 'reverse_pec_deck', name: 'Reverse Pec Deck', muscle: 'Shoulders', type: 'Isolation', substitutes: ['face_pull'] },
-    { id: 'shrugs', name: 'Dumbbell Shrugs', muscle: 'Back', type: 'Isolation', substitutes: ['barbell_shrugs', 'smith_shrugs'] },
+    { id: 'shrugs', name: 'Dumbbell Shrugs', muscle: 'Back', type: 'Isolation', substitutes: ['smith_shrugs'] },
     { id: 'smith_shrugs', name: 'Smith Machine Shrug', muscle: 'Back', type: 'Isolation', substitutes: ['shrugs'] },
 
     // --- LEGS (QUADS) ---
-    { id: 'squat', name: 'Barbell Squat', muscle: 'Quads', type: 'Compound', substitutes: ['hack_squat', 'spider_bar_squat', 'smith_squat'] },
+    { id: 'squat', name: 'Barbell Squat', muscle: 'Quads', type: 'Compound', substitutes: ['hack_squat', 'smith_squat'] },
     { id: 'smith_squat', name: 'Smith Machine Squat', muscle: 'Quads', type: 'Compound', substitutes: ['squat'] },
     { id: 'front_squat', name: 'Front Squat', muscle: 'Quads', type: 'Compound', substitutes: ['squat'] },
     { id: 'hack_squat', name: 'Hack Squat', muscle: 'Quads', type: 'Compound', substitutes: ['leg_press', 'pendulum_squat'] },
@@ -142,7 +142,7 @@ export const EXERCISES = [
     { id: 'jm_press', name: 'JM Press', muscle: 'Triceps', type: 'Compound', substitutes: ['close_grip_bench'] },
 
     // --- ABS ---
-    { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['captain_chair_raise', 'crunch'] },
+    { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['captain_chair_raise'] },
     { id: 'captain_chair_raise', name: 'Captain\'s Chair Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['hanging_leg_raise'] },
     { id: 'cable_crunch', name: 'Cable Crunch', muscle: 'Abs', type: 'Isolation', substitutes: ['plank'] },
     { id: 'plank', name: 'Plank', muscle: 'Abs', type: 'Isolation', substitutes: ['ab_wheel'] },

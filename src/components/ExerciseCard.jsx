@@ -10,14 +10,12 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
     };
 
     const updateSet = (index, field, value) => {
-        const newSets = [...sets];
-        newSets[index][field] = value;
+        const newSets = sets.map((s, i) => i === index ? { ...s, [field]: value } : s);
         onUpdateSets(exercise.id, newSets);
     };
 
     const toggleSet = (index) => {
-        const newSets = [...sets];
-        newSets[index].done = !newSets[index].done;
+        const newSets = sets.map((s, i) => i === index ? { ...s, done: !s.done } : s);
         onUpdateSets(exercise.id, newSets);
     }
 
@@ -188,7 +186,3 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
     );
 };
 
-// Helper
-const propsHaveValues = (sets) => {
-    return sets.some(s => s.weight && s.weight > 0);
-}

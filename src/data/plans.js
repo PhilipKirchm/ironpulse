@@ -11,7 +11,7 @@ export const PLANS = [
             { id: 'thu_rest', weekday: 'Donnerstag', name: 'Rest', exercises: [] },
             { id: 'fri_push_b', weekday: 'Freitag', name: 'Push B', exercises: ['ohp', 'incline_dumbell_press', 'cable_fly', 'lateral_raise', 'skull_crusher'] },
             { id: 'sat_pull_b', weekday: 'Samstag', name: 'Pull B', exercises: ['lat_pulldown', 'cable_row', 'face_pull', 'hammer_curl'] },
-            { id: 'sun_legs_b', weekday: 'Sonntag', name: 'Legs B', exercises: ['deadlift', 'leg_press', 'lunges', 'leg_curl'] }
+            { id: 'sun_legs_b', weekday: 'Sonntag', name: 'Legs B', exercises: ['deadlift', 'leg_press', 'lunge', 'leg_curl'] }
         ]
     },
     {
@@ -39,10 +39,16 @@ export const PLANS = [
             { id: 'thu_rest', weekday: 'Donnerstag', name: 'Rest', exercises: [] },
             { id: 'fri_cb2', weekday: 'Freitag', name: 'Chest & Back', exercises: ['low_incline_dumbell_press', 'lat_pulldown', 'machine_shoulder_press', 'preacher_curl', 'overhead_extension'] },
             { id: 'sat_sa2', weekday: 'Samstag', name: 'Shoulders & Arms', exercises: ['ohp', 'lateral_raise', 'bicep_curl', 'hammer_curl', 'tricep_pushdown'] },
-            { id: 'sun_legs2', weekday: 'Sonntag', name: 'Legs Volume', exercises: ['leg_press', 'hack_squat', 'lunges', 'leg_curl'] }
+            { id: 'sun_legs2', weekday: 'Sonntag', name: 'Legs Volume', exercises: ['leg_press', 'hack_squat', 'lunge', 'leg_curl'] }
         ]
     }
 ];
+
+/** Einheitliche Ruhetag-Erkennung (rest / pause / ruhetag / leer) */
+export const isRestDayName = (dayName) => {
+    const n = (dayName || '').toLowerCase().trim();
+    return n === '' || n.includes('rest') || n.includes('pause') || n.includes('ruhetag');
+};
 
 export const getSuggestedExercisesForDayName = (dayName) => {
     const name = (dayName || '').toLowerCase().trim();

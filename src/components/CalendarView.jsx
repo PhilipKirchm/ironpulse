@@ -2,10 +2,12 @@ import { useData } from '../hooks/useData';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { isRestDayName } from '../data/plans';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 
 export const CalendarView = ({ onEditWorkout }) => {
-    const { getWorkoutForDate, isDeloadWeek, data } = useData();
+    const { getWorkoutForDate, isDeloadWeek, data, getAllExercises } = useData();
+    const allExercises = getAllExercises();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [direction, setDirection] = useState(0);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -110,7 +112,7 @@ export const CalendarView = ({ onEditWorkout }) => {
                     const isToday = isSameDay(day, new Date());
                     const isSelected = isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, currentMonth);
-                    const isRest = workout?.name?.includes('Rest');
+                    const isRest = isRestDayName(workout?.name);
                     const hasLog = data.logs?.some(log => isSameDay(parseISO(log.date), day));
 
                     return (
@@ -178,8 +180,7 @@ export const CalendarView = ({ onEditWorkout }) => {
 
                         <div style={{ display: 'grid', gap: '12px' }}>
                             {selectedLog.exercises.map((ex, idx) => {
-                                const exerciseInfo = data.customExercises?.find(ce => ce.id === ex.id) ||
-                                    // Fallback search in all exercises
+                                const exerciseInfo = allExercises.find(e => e.id === ex.id) ||
                                     { name: ex.id.replace(/_/g, ' ') };
 
                                 return (
@@ -199,7 +200,7 @@ export const CalendarView = ({ onEditWorkout }) => {
                     </div>
                 ) : (
                     <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border)', background: 'transparent' }}>
-                        {getWorkoutForDate(selectedDate)?.name.toLowerCase().includes('rest') ? (
+                        {isRestDayName(getWorkoutForDate(selectedDate)?.name) ? (
                             <p>Rest day. No workout logged.</p>
                         ) : (
                             <p>No workout completed for this day yet.</p>

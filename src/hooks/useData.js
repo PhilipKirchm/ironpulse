@@ -1,5 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, createElement } from 'react';
+import { isSameDay, parseISO } from 'date-fns';
 import { PLANS } from '../data/plans';
 import { EXERCISES as DEFAULT_EXERCISES } from '../data/exercises';
 
@@ -67,7 +68,7 @@ function useDataProvider() {
 
             if (IS_TEST_BUILD) return seedData(INITIAL_DATA);
             return INITIAL_DATA;
-        } catch (e) {
+        } catch {
             return INITIAL_DATA;
         }
     });
@@ -95,7 +96,7 @@ function useDataProvider() {
                 }
                 setData({ ...INITIAL_DATA, user: { name: activeUser } });
             }
-        } catch (e) {
+        } catch {
             setData(INITIAL_DATA);
         }
     }, [activeUser]);
@@ -103,7 +104,11 @@ function useDataProvider() {
     useEffect(() => {
         if (!activeUser) return;
         const key = `${STORAGE_KEY_BASE}_${activeUser}`;
-        localStorage.setItem(key, JSON.stringify(data));
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+        } catch (err) {
+            console.error('Speichern fehlgeschlagen (Speicher voll?)', err);
+        }
     }, [data, activeUser]);
 
     // Merge default and custom exercises for usage
@@ -116,8 +121,8 @@ function useDataProvider() {
         return [...PLANS, ...(data.customPlans || [])];
     }
 
-    // Select a plan. preserveProgress=true avoids wiping logs/prs/drafts
-    const selectPlan = (planId, options = { preserveProgress: true }) => {
+    // Select a plan
+    const selectPlan = (planId) => {
         setData(prev => ({ ...prev, currentPlanId: planId, currentDayIndex: 0 }));
     };
 
@@ -137,7 +142,7 @@ function useDataProvider() {
         setActiveUserStore(name);
         setActiveUserState(name);
         
-        setData(prev => ({ ...prev, user: { name, password } }));
+        setData(prev => ({ ...prev, user: { name } }));
         setTimeout(() => window.location.reload(), 50);
         return { ok: true };
     };
@@ -193,9 +198,12 @@ function useDataProvider() {
 
         setData(prev => {
             if (isCustom) {
+                // Beim Speichern im Plan-Editor gelten die Plan-Daten wieder; alte Workout-Overrides entfernen
+                const { [planId]: _removed, ...remainingOverrides } = prev.customOverrides || {};
                 return {
                     ...prev,
                     customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p),
+                    customOverrides: remainingOverrides,
                     currentPlanId: planId
                 };
             } else {
@@ -241,7 +249,8 @@ function useDataProvider() {
 
     const getLastLoggedSession = (exerciseId) => {
         if (!data.logs || data.logs.length === 0) return null;
-        for (const log of data.logs) {
+        const sorted = [...data.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+        for (const log of sorted) {
             if (!log.exercises) continue;
             const ex = log.exercises.find(e => e.id === exerciseId);
             if (ex && ex.sets && ex.sets.length > 0) {
@@ -278,10 +287,11 @@ function useDataProvider() {
 
     const getWorkoutForDate = (date) => {
         const plan = getPlan();
-        if (!plan) return null;
+        if (!plan || !plan.days || plan.days.length === 0) return null;
 
+        const d = date instanceof Date ? date : new Date(date);
         if (plan.id === 'ppl_ul_hybrid' || plan.days.length === 7) {
-            const dayIndex = date.getDay(); // 0=Sun
+            const dayIndex = d.getDay(); // 0=Sun
             // Convert to 0=Mon, 6=Sun to match array
             const index = (dayIndex + 6) % 7;
             return plan.days[index];
@@ -335,22 +345,30 @@ function useDataProvider() {
         });
     };
 
-    const saveWorkout = (workoutLog) => {
-        const plan = getPlan();
-        setData(prev => {
-            let newPrs = { ...prev.prs };
-            workoutLog.exercises.forEach(ex => {
-                ex.sets.forEach(set => {
-                    const w = parseFloat(set.weight);
-                    if (w > (newPrs[ex.id] || 0)) {
-                        newPrs[ex.id] = w;
+    const recalculatePRs = (logs) => {
+        const prs = {};
+        (logs || []).forEach(log => {
+            (log.exercises || []).forEach(ex => {
+                (ex.sets || []).forEach(s => {
+                    const w = parseFloat(s.weight);
+                    if (!isNaN(w) && w > (prs[ex.id] || 0)) {
+                        prs[ex.id] = w;
                     }
                 });
             });
+        });
+        return prs;
+    };
+
+    const saveWorkout = (workoutLog) => {
+        const plan = getPlan();
+        setData(prev => {
+            const nextLogs = [workoutLog, ...(prev.logs || [])];
+            const newPrs = recalculatePRs(nextLogs);
 
             return {
                 ...prev,
-                logs: [workoutLog, ...(prev.logs || [])],
+                logs: nextLogs,
                 prs: newPrs,
                 currentDayIndex: (prev.currentDayIndex + 1) % (plan?.days.length || 1)
             };
@@ -364,21 +382,23 @@ function useDataProvider() {
             if (idx !== -1) {
                 logsCpy[idx] = updatedLog;
             }
-
-            // Recalculate PRs based on the updated log for simplicity, or just update if higher.
-            let newPrs = { ...prev.prs };
-            updatedLog.exercises.forEach(ex => {
-                ex.sets.forEach(set => {
-                    const w = parseFloat(set.weight);
-                    if (w > (newPrs[ex.id] || 0)) {
-                        newPrs[ex.id] = w;
-                    }
-                });
-            });
+            const newPrs = recalculatePRs(logsCpy);
 
             return {
                 ...prev,
                 logs: logsCpy,
+                prs: newPrs
+            };
+        });
+    };
+
+    const deleteLog = (originalDate) => {
+        setData(prev => {
+            const nextLogs = (prev.logs || []).filter(l => l.date !== originalDate);
+            const newPrs = recalculatePRs(nextLogs);
+            return {
+                ...prev,
+                logs: nextLogs,
                 prs: newPrs
             };
         });
@@ -464,27 +484,84 @@ function useDataProvider() {
         }));
     }
 
+    const getTodayLog = () => {
+        const now = new Date();
+        return (data.logs || []).find(log => {
+            try {
+                return isSameDay(parseISO(log.date), now);
+            } catch {
+                return false;
+            }
+        });
+    };
+
     const hasCompletedWorkoutToday = () => {
-        const today = new Date().toISOString().split('T')[0];
-        return (data.logs || []).some(log => log.date.split('T')[0] === today);
-    }
+        return Boolean(getTodayLog());
+    };
 
-    const getNextTrainingDay = () => {
+    const getNextTrainingDay = (fromDate = new Date()) => {
         const plan = getPlan();
-        if (!plan) return null;
+        if (!plan || !plan.days || plan.days.length === 0) return null;
 
-        // Simple logic: get the next day in the sequence that isn't rest
-        let nextIndex = (data.currentDayIndex) % plan.days.length;
-        // Search ahead for the next non-rest day if current one is rest
-        for (let i = 0; i < plan.days.length * 2; i++) {
+        if (plan.days.length === 7) {
+            const currDate = fromDate instanceof Date ? fromDate : new Date(fromDate);
+            for (let offset = 1; offset <= 7; offset++) {
+                const checkDate = new Date(currDate);
+                checkDate.setDate(currDate.getDate() + offset);
+                const dayIndex = checkDate.getDay(); // 0=Sun
+                const index = (dayIndex + 6) % 7;
+                const candidate = plan.days[index];
+                if (candidate && !candidate.name.toLowerCase().includes('rest') && !candidate.name.toLowerCase().includes('pause') && !candidate.name.toLowerCase().includes('ruhetag')) {
+                    return {
+                        ...candidate,
+                        targetDate: checkDate,
+                        daysAway: offset
+                    };
+                }
+            }
+            const tomorrow = new Date(currDate);
+            tomorrow.setDate(currDate.getDate() + 1);
+            const idx = (tomorrow.getDay() + 6) % 7;
+            return { ...plan.days[idx], targetDate: tomorrow, daysAway: 1 };
+        }
+
+        let nextIndex = ((data.currentDayIndex || 0) + 1) % plan.days.length;
+        for (let i = 0; i < plan.days.length; i++) {
             const day = plan.days[nextIndex];
-            if (!day.name.toLowerCase().includes('rest')) {
+            if (!day.name.toLowerCase().includes('rest') && !day.name.toLowerCase().includes('pause') && !day.name.toLowerCase().includes('ruhetag')) {
                 return day;
             }
             nextIndex = (nextIndex + 1) % plan.days.length;
         }
         return plan.days[nextIndex];
-    }
+    };
+
+    const exportUserData = () => {
+        // Passwort nie mit exportieren
+        const { user, ...rest } = data;
+        const safeUser = user ? { name: user.name } : null;
+        return JSON.stringify({ schemaVersion: 1, ...rest, user: safeUser }, null, 2);
+    };
+
+    const importUserData = (jsonString) => {
+        try {
+            const parsed = JSON.parse(jsonString);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, error: 'Ungültiges Datenformat' };
+            if (!Array.isArray(parsed.logs)) return { ok: false, error: 'Keine Trainingsdaten (logs) gefunden' };
+            const validLogs = parsed.logs.filter(l => l && typeof l.date === 'string' && typeof l.dayId === 'string' && Array.isArray(l.exercises));
+            const { schemaVersion: _v, ...rest } = parsed;
+            setData(prev => ({
+                ...INITIAL_DATA,
+                ...rest,
+                logs: validLogs,
+                prs: recalculatePRs(validLogs),
+                user: prev.user // eingeloggtes Profil bleibt erhalten
+            }));
+            return { ok: true, imported: validLogs.length, skipped: parsed.logs.length - validLogs.length };
+        } catch (err) {
+            return { ok: false, error: err.message };
+        }
+    };
 
     const saveWorkoutDraft = (dayId, draftData) => {
         setData(prev => ({
@@ -527,11 +604,15 @@ function useDataProvider() {
         getWorkoutForDate,
         getWeekNumber,
         isDeloadWeek,
+        getTodayLog,
         hasCompletedWorkoutToday,
         getNextTrainingDay,
         saveWorkoutDraft,
         clearWorkoutDraft,
         updateLog,
+        deleteLog,
+        exportUserData,
+        importUserData,
         setMachineSelection,
         getMachineSelection,
         updateCustomPlan,

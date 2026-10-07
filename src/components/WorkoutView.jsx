@@ -14,6 +14,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     const [notes, setNotes] = useState({}); // Stores notes per exerciseId
     const [machineSelections, setMachineSelections] = useState({}); // Stores machine per exerciseId
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [swappingId, setSwappingId] = useState(null); // ID or 'NEW'
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -106,9 +107,14 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     };
 
     const handleFinish = () => {
+        if (isSaving) return; // verhindert doppeltes Speichern
+        setIsSaving(true);
         const payloadExercises = exercises.map(ex => ({
             id: ex.id,
-            sets: setsData[ex.id]?.filter(s => s.done && s.weight && s.reps) || [],
+            // Koerpergewichtsuebungen: leeres Gewicht wird als 0 kg gespeichert statt verworfen
+            sets: (setsData[ex.id] || [])
+                .filter(s => s.done && s.reps)
+                .map(s => ({ ...s, weight: s.weight === '' || s.weight == null ? '0' : s.weight })),
             note: notes[ex.id] || '',
             machine: machineSelections[ex.id] || 'Free Weights'
         }));
@@ -157,7 +163,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
 
     const handleRemove = (exId) => {
         const newIds = exercises.filter(e => e.id !== exId).map(e => e.id);
-        customizeDay(planId, dayId, newIds);
+        if (!editLog) customizeDay(planId, dayId, newIds); // alte Eintraege aendern den Plan nicht
         setExercises(prev => prev.filter(e => e.id !== exId));
     };
 
@@ -175,24 +181,26 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
 
     const handleCreateCustom = () => {
         if (!newExerciseName.trim()) return;
-        const newEx = addCustomExercise(newExerciseName, newExerciseMuscle);
+        const newEx = addCustomExercise(newExerciseName.trim(), newExerciseMuscle);
 
-        // Immediately add to workout
-        commitSwapOrAdd(newEx.id);
+        // Objekt direkt uebergeben: allExercises kennt die neue Uebung erst nach dem naechsten Render
+        commitSwapOrAdd(newEx);
         setIsCreating(false);
         setNewExerciseName('');
-        alert('Exercise created successfully!');
     }
 
-    const commitSwapOrAdd = (newId) => {
+    const commitSwapOrAdd = (target) => {
+        // target: Uebungs-Objekt (oder ID aus der Suchliste)
+        const newEx = typeof target === 'string' ? allExercises.find(e => e.id === target) : target;
+        if (!newEx) return;
+        const newId = newEx.id;
         if (swappingId === 'NEW') {
             // Add new
-            const newEx = allExercises.find(e => e.id === newId);
-            if (exercises.find(e => e.id === newId)) return; // Simple anti-duplicate
+            if (exercises.find(e => e.id === newId)) { setSwappingId(null); return; } // Anti-Duplikat
 
             const newExercises = [...exercises, newEx];
             const newIds = newExercises.map(e => e.id);
-            customizeDay(planId, dayId, newIds);
+            if (!editLog) customizeDay(planId, dayId, newIds);
             setExercises(newExercises);
 
             setSetsData(prev => ({
@@ -206,11 +214,10 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
             if (idx === -1) return;
 
             const newExercises = [...exercises];
-            const newEx = allExercises.find(e => e.id === newId);
             newExercises[idx] = newEx;
 
             const newIds = newExercises.map(e => e.id);
-            customizeDay(planId, dayId, newIds);
+            if (!editLog) customizeDay(planId, dayId, newIds);
             setExercises(newExercises);
 
             setSetsData(prev => {
@@ -314,6 +321,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         className="btn-primary"
                         style={{ width: '100%', maxWidth: '500px' }}
                         onClick={handleFinish}
+                        disabled={isSaving}
                     >
                         {editLog ? 'Save Edit' : 'Finish Workout'}
                     </motion.button>

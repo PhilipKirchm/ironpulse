@@ -2,6 +2,7 @@
 import { useData } from '../hooks/useData';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isRestDayName } from '../data/plans';
 import { Settings, Play, Dumbbell, Calendar, ChevronRight, ChevronDown, Check } from 'lucide-react';
 
 export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
@@ -14,7 +15,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
 
     if (!plan) return null;
 
-    const isRestDay = currentDay?.name.toLowerCase().includes('rest');
+    const isRestDay = isRestDayName(currentDay?.name);
 
     return (
         <motion.div
@@ -56,10 +57,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
 
                         {isRestDay ? (
                             <div>
-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Rest days are essential.</p>
-                                <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {/* Skip rest logic could go here */ }}>
-                                    Refueled? Next Day &rarr;
-                                </button>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>Ruhetage sind wichtig – heute regenerieren.</p>
                             </div>
                         ) : (
                             <motion.button
