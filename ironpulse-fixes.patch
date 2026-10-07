@@ -1,0 +1,437 @@
+diff -ruN --strip-trailing-cr a/src/components/CalendarView.jsx src/components/CalendarView.jsx
+--- a/src/components/CalendarView.jsx	2026-10-07 22:46:01.806392131 +0000
++++ b/src/components/CalendarView.jsx	2026-10-07 22:46:11.069890054 +0000
+@@ -2,10 +2,12 @@
+ import { motion } from 'framer-motion';
+ import { ChevronLeft, ChevronRight } from 'lucide-react';
+ import { useState } from 'react';
++import { isRestDayName } from '../data/plans';
+ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
+ 
+ export const CalendarView = ({ onEditWorkout }) => {
+-    const { getWorkoutForDate, isDeloadWeek, data } = useData();
++    const { getWorkoutForDate, isDeloadWeek, data, getAllExercises } = useData();
++    const allExercises = getAllExercises();
+     const [currentMonth, setCurrentMonth] = useState(new Date());
+     const [direction, setDirection] = useState(0);
+     const [selectedDate, setSelectedDate] = useState(new Date());
+@@ -110,7 +112,7 @@
+                     const isToday = isSameDay(day, new Date());
+                     const isSelected = isSameDay(day, selectedDate);
+                     const isCurrentMonth = isSameMonth(day, currentMonth);
+-                    const isRest = workout?.name?.includes('Rest');
++                    const isRest = isRestDayName(workout?.name);
+                     const hasLog = data.logs?.some(log => isSameDay(parseISO(log.date), day));
+ 
+                     return (
+@@ -178,8 +180,7 @@
+ 
+                         <div style={{ display: 'grid', gap: '12px' }}>
+                             {selectedLog.exercises.map((ex, idx) => {
+-                                const exerciseInfo = data.customExercises?.find(ce => ce.id === ex.id) ||
+-                                    // Fallback search in all exercises
++                                const exerciseInfo = allExercises.find(e => e.id === ex.id) ||
+                                     { name: ex.id.replace(/_/g, ' ') };
+ 
+                                 return (
+@@ -199,7 +200,7 @@
+                     </div>
+                 ) : (
+                     <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border)', background: 'transparent' }}>
+-                        {getWorkoutForDate(selectedDate)?.name.toLowerCase().includes('rest') ? (
++                        {isRestDayName(getWorkoutForDate(selectedDate)?.name) ? (
+                             <p>Rest day. No workout logged.</p>
+                         ) : (
+                             <p>No workout completed for this day yet.</p>
+diff -ruN --strip-trailing-cr a/src/components/Dashboard.jsx src/components/Dashboard.jsx
+--- a/src/components/Dashboard.jsx	2026-10-07 22:46:01.806465592 +0000
++++ b/src/components/Dashboard.jsx	2026-10-07 22:46:11.069386560 +0000
+@@ -2,6 +2,7 @@
+ import { useData } from '../hooks/useData';
+ import { useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
++import { isRestDayName } from '../data/plans';
+ import { Settings, Play, Dumbbell, Calendar, ChevronRight, ChevronDown, Check } from 'lucide-react';
+ 
+ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
+@@ -14,7 +15,7 @@
+ 
+     if (!plan) return null;
+ 
+-    const isRestDay = currentDay?.name.toLowerCase().includes('rest');
++    const isRestDay = isRestDayName(currentDay?.name);
+ 
+     return (
+         <motion.div
+@@ -56,10 +57,7 @@
+ 
+                         {isRestDay ? (
+                             <div>
+-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Rest days are essential.</p>
+-                                <button className="btn-secondary" style={{ width: '100%' }} onClick={() => {/* Skip rest logic could go here */ }}>
+-                                    Refueled? Next Day &rarr;
+-                                </button>
++                                <p style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>Ruhetage sind wichtig – heute regenerieren.</p>
+                             </div>
+                         ) : (
+                             <motion.button
+diff -ruN --strip-trailing-cr a/src/components/ExerciseCard.jsx src/components/ExerciseCard.jsx
+--- a/src/components/ExerciseCard.jsx	2026-10-07 22:46:01.806533844 +0000
++++ b/src/components/ExerciseCard.jsx	2026-10-07 22:46:29.565725374 +0000
+@@ -10,14 +10,12 @@
+     };
+ 
+     const updateSet = (index, field, value) => {
+-        const newSets = [...sets];
+-        newSets[index][field] = value;
++        const newSets = sets.map((s, i) => i === index ? { ...s, [field]: value } : s);
+         onUpdateSets(exercise.id, newSets);
+     };
+ 
+     const toggleSet = (index) => {
+-        const newSets = [...sets];
+-        newSets[index].done = !newSets[index].done;
++        const newSets = sets.map((s, i) => i === index ? { ...s, done: !s.done } : s);
+         onUpdateSets(exercise.id, newSets);
+     }
+ 
+@@ -188,7 +186,3 @@
+     );
+ };
+ 
+-// Helper
+-const propsHaveValues = (sets) => {
+-    return sets.some(s => s.weight && s.weight > 0);
+-}
+diff -ruN --strip-trailing-cr a/src/components/ProfileView.jsx src/components/ProfileView.jsx
+--- a/src/components/ProfileView.jsx	2026-10-07 22:46:01.807159132 +0000
++++ b/src/components/ProfileView.jsx	2026-10-07 22:46:24.150580197 +0000
+@@ -1,9 +1,58 @@
+ import { useData } from '../hooks/useData';
+ import { motion } from 'framer-motion';
+-import { User, LogOut, Shield } from 'lucide-react';
++import { useState } from 'react';
++import { User, LogOut, Shield, Download, Upload, Copy } from 'lucide-react';
+ 
+ export const ProfileView = () => {
+-    const { data, logoutUser } = useData();
++    const { data, logoutUser, exportUserData, importUserData } = useData();
++    const [message, setMessage] = useState(null); // { type: 'ok' | 'error', text }
++    const [pasteText, setPasteText] = useState('');
++
++    const show = (type, text) => setMessage({ type, text });
++
++    const handleDownload = () => {
++        try {
++            const blob = new Blob([exportUserData()], { type: 'application/json' });
++            const url = URL.createObjectURL(blob);
++            const a = document.createElement('a');
++            a.href = url;
++            a.download = `ironpulse-backup-${new Date().toISOString().slice(0, 10)}.json`;
++            document.body.appendChild(a);
++            a.click();
++            a.remove();
++            URL.revokeObjectURL(url);
++            show('ok', 'Backup erstellt. Falls kein Download startet, nutze "Backup kopieren".');
++        } catch {
++            show('error', 'Download nicht möglich. Nutze "Backup kopieren".');
++        }
++    };
++
++    const handleCopy = async () => {
++        try {
++            await navigator.clipboard.writeText(exportUserData());
++            show('ok', 'Backup in die Zwischenablage kopiert. Füge es z. B. in eine Notiz oder Mail an dich selbst ein.');
++        } catch {
++            show('error', 'Kopieren nicht erlaubt. Versuche "Backup herunterladen".');
++        }
++    };
++
++    const runImport = (text) => {
++        if (!window.confirm('Import ersetzt deine aktuellen Trainingsdaten. Fortfahren?')) return;
++        const res = importUserData(text);
++        if (res.ok) {
++            show('ok', `${res.imported} Workouts importiert${res.skipped ? `, ${res.skipped} ungültige übersprungen` : ''}.`);
++            setPasteText('');
++        } else {
++            show('error', `Import fehlgeschlagen: ${res.error}`);
++        }
++    };
++
++    const handleFile = async (e) => {
++        const file = e.target.files?.[0];
++        e.target.value = '';
++        if (!file) return;
++        runImport(await file.text());
++    };
+ 
+     return (
+         <motion.div
+@@ -29,6 +78,39 @@
+                 </div>
+             </div>
+ 
++            <div className="card" style={{ padding: '20px', marginTop: '24px' }}>
++                <h3 style={{ margin: '0 0 6px 0' }}>Backup</h3>
++                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 16px 0' }}>
++                    Deine Daten liegen nur auf diesem Gerät. Sichere sie regelmäßig.
++                </p>
++                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
++                    <button className="btn-secondary" onClick={handleDownload} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
++                        <Download size={18} /> Backup herunterladen
++                    </button>
++                    <button className="btn-secondary" onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
++                        <Copy size={18} /> Backup kopieren
++                    </button>
++                    <label className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', textAlign: 'center' }}>
++                        <Upload size={18} /> Backup-Datei importieren
++                        <input type="file" accept="application/json,.json" onChange={handleFile} style={{ display: 'none' }} />
++                    </label>
++                    <textarea
++                        className="input-field"
++                        placeholder="Oder Backup-Text hier einfügen…"
++                        value={pasteText}
++                        onChange={(e) => setPasteText(e.target.value)}
++                        rows={3}
++                        style={{ resize: 'vertical' }}
++                    />
++                    {pasteText.trim() && (
++                        <button className="btn-primary" onClick={() => runImport(pasteText)}>Eingefügten Text importieren</button>
++                    )}
++                    {message && (
++                        <div style={{ fontSize: '0.85rem', color: message.type === 'ok' ? 'var(--accent)' : 'var(--danger)' }}>{message.text}</div>
++                    )}
++                </div>
++            </div>
++
+             <button 
+                 className="btn-secondary" 
+                 onClick={logoutUser} 
+diff -ruN --strip-trailing-cr a/src/components/WorkoutView.jsx src/components/WorkoutView.jsx
+--- a/src/components/WorkoutView.jsx	2026-10-07 22:46:01.807326366 +0000
++++ b/src/components/WorkoutView.jsx	2026-10-07 22:46:01.855713231 +0000
+@@ -14,6 +14,7 @@
+     const [notes, setNotes] = useState({}); // Stores notes per exerciseId
+     const [machineSelections, setMachineSelections] = useState({}); // Stores machine per exerciseId
+     const [isEditing, setIsEditing] = useState(false);
++    const [isSaving, setIsSaving] = useState(false);
+     const [swappingId, setSwappingId] = useState(null); // ID or 'NEW'
+     const [searchQuery, setSearchQuery] = useState('');
+ 
+@@ -106,9 +107,14 @@
+     };
+ 
+     const handleFinish = () => {
++        if (isSaving) return; // verhindert doppeltes Speichern
++        setIsSaving(true);
+         const payloadExercises = exercises.map(ex => ({
+             id: ex.id,
+-            sets: setsData[ex.id]?.filter(s => s.done && s.weight && s.reps) || [],
++            // Koerpergewichtsuebungen: leeres Gewicht wird als 0 kg gespeichert statt verworfen
++            sets: (setsData[ex.id] || [])
++                .filter(s => s.done && s.reps)
++                .map(s => ({ ...s, weight: s.weight === '' || s.weight == null ? '0' : s.weight })),
+             note: notes[ex.id] || '',
+             machine: machineSelections[ex.id] || 'Free Weights'
+         }));
+@@ -157,7 +163,7 @@
+ 
+     const handleRemove = (exId) => {
+         const newIds = exercises.filter(e => e.id !== exId).map(e => e.id);
+-        customizeDay(planId, dayId, newIds);
++        if (!editLog) customizeDay(planId, dayId, newIds); // alte Eintraege aendern den Plan nicht
+         setExercises(prev => prev.filter(e => e.id !== exId));
+     };
+ 
+@@ -175,24 +181,26 @@
+ 
+     const handleCreateCustom = () => {
+         if (!newExerciseName.trim()) return;
+-        const newEx = addCustomExercise(newExerciseName, newExerciseMuscle);
++        const newEx = addCustomExercise(newExerciseName.trim(), newExerciseMuscle);
+ 
+-        // Immediately add to workout
+-        commitSwapOrAdd(newEx.id);
++        // Objekt direkt uebergeben: allExercises kennt die neue Uebung erst nach dem naechsten Render
++        commitSwapOrAdd(newEx);
+         setIsCreating(false);
+         setNewExerciseName('');
+-        alert('Exercise created successfully!');
+     }
+ 
+-    const commitSwapOrAdd = (newId) => {
++    const commitSwapOrAdd = (target) => {
++        // target: Uebungs-Objekt (oder ID aus der Suchliste)
++        const newEx = typeof target === 'string' ? allExercises.find(e => e.id === target) : target;
++        if (!newEx) return;
++        const newId = newEx.id;
+         if (swappingId === 'NEW') {
+             // Add new
+-            const newEx = allExercises.find(e => e.id === newId);
+-            if (exercises.find(e => e.id === newId)) return; // Simple anti-duplicate
++            if (exercises.find(e => e.id === newId)) { setSwappingId(null); return; } // Anti-Duplikat
+ 
+             const newExercises = [...exercises, newEx];
+             const newIds = newExercises.map(e => e.id);
+-            customizeDay(planId, dayId, newIds);
++            if (!editLog) customizeDay(planId, dayId, newIds);
+             setExercises(newExercises);
+ 
+             setSetsData(prev => ({
+@@ -206,11 +214,10 @@
+             if (idx === -1) return;
+ 
+             const newExercises = [...exercises];
+-            const newEx = allExercises.find(e => e.id === newId);
+             newExercises[idx] = newEx;
+ 
+             const newIds = newExercises.map(e => e.id);
+-            customizeDay(planId, dayId, newIds);
++            if (!editLog) customizeDay(planId, dayId, newIds);
+             setExercises(newExercises);
+ 
+             setSetsData(prev => {
+@@ -314,6 +321,7 @@
+                         className="btn-primary"
+                         style={{ width: '100%', maxWidth: '500px' }}
+                         onClick={handleFinish}
++                        disabled={isSaving}
+                     >
+                         {editLog ? 'Save Edit' : 'Finish Workout'}
+                     </motion.button>
+diff -ruN --strip-trailing-cr a/src/data/exercises.js src/data/exercises.js
+--- a/src/data/exercises.js	2026-10-07 22:46:01.807437529 +0000
++++ b/src/data/exercises.js	2026-10-07 22:46:11.068592099 +0000
+@@ -31,7 +31,7 @@
+ export const EXERCISES = [
+     // --- CHEST ---
+     { id: 'bench_press', name: 'Barbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['dumbbell_press', 'machine_chest_press', 'smith_bench_press'], machines: ['Free Weights'] },
+-    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Technogym', 'Gym 80 Panata', 'Rogue', 'Other'] },
++    { id: 'smith_bench_press', name: 'Smith Machine Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Technogym', 'Gym80', 'Panata', 'Rogue', 'Other'] },
+     { id: 'dumbbell_press', name: 'Dumbbell Bench Press', muscle: 'Chest', type: 'Compound', substitutes: ['bench_press'], machines: ['Free Weights'] },
+     { id: 'incline_bench_press', name: 'Incline Barbell Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_dumbell_press', 'smith_incline_press'] },
+     { id: 'smith_incline_press', name: 'Incline Smith Machine Press', muscle: 'Chest', type: 'Compound', substitutes: ['incline_bench_press'] },
+@@ -67,11 +67,11 @@
+     { id: 'dumbbell_pullover', name: 'Dumbbell Pullover', muscle: 'Back', type: 'Isolation', substitutes: ['lat_prayer'] },
+     { id: 'face_pull', name: 'Face Pull', muscle: 'Shoulders', type: 'Isolation', substitutes: ['reverse_pec_deck'] },
+     { id: 'reverse_pec_deck', name: 'Reverse Pec Deck', muscle: 'Shoulders', type: 'Isolation', substitutes: ['face_pull'] },
+-    { id: 'shrugs', name: 'Dumbbell Shrugs', muscle: 'Back', type: 'Isolation', substitutes: ['barbell_shrugs', 'smith_shrugs'] },
++    { id: 'shrugs', name: 'Dumbbell Shrugs', muscle: 'Back', type: 'Isolation', substitutes: ['smith_shrugs'] },
+     { id: 'smith_shrugs', name: 'Smith Machine Shrug', muscle: 'Back', type: 'Isolation', substitutes: ['shrugs'] },
+ 
+     // --- LEGS (QUADS) ---
+-    { id: 'squat', name: 'Barbell Squat', muscle: 'Quads', type: 'Compound', substitutes: ['hack_squat', 'spider_bar_squat', 'smith_squat'] },
++    { id: 'squat', name: 'Barbell Squat', muscle: 'Quads', type: 'Compound', substitutes: ['hack_squat', 'smith_squat'] },
+     { id: 'smith_squat', name: 'Smith Machine Squat', muscle: 'Quads', type: 'Compound', substitutes: ['squat'] },
+     { id: 'front_squat', name: 'Front Squat', muscle: 'Quads', type: 'Compound', substitutes: ['squat'] },
+     { id: 'hack_squat', name: 'Hack Squat', muscle: 'Quads', type: 'Compound', substitutes: ['leg_press', 'pendulum_squat'] },
+@@ -142,7 +142,7 @@
+     { id: 'jm_press', name: 'JM Press', muscle: 'Triceps', type: 'Compound', substitutes: ['close_grip_bench'] },
+ 
+     // --- ABS ---
+-    { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['captain_chair_raise', 'crunch'] },
++    { id: 'hanging_leg_raise', name: 'Hanging Leg Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['captain_chair_raise'] },
+     { id: 'captain_chair_raise', name: 'Captain\'s Chair Raise', muscle: 'Abs', type: 'Isolation', substitutes: ['hanging_leg_raise'] },
+     { id: 'cable_crunch', name: 'Cable Crunch', muscle: 'Abs', type: 'Isolation', substitutes: ['plank'] },
+     { id: 'plank', name: 'Plank', muscle: 'Abs', type: 'Isolation', substitutes: ['ab_wheel'] },
+diff -ruN --strip-trailing-cr a/src/data/plans.js src/data/plans.js
+--- a/src/data/plans.js	2026-10-07 22:46:01.807553503 +0000
++++ b/src/data/plans.js	2026-10-07 22:46:11.068990313 +0000
+@@ -11,7 +11,7 @@
+             { id: 'thu_rest', weekday: 'Donnerstag', name: 'Rest', exercises: [] },
+             { id: 'fri_push_b', weekday: 'Freitag', name: 'Push B', exercises: ['ohp', 'incline_dumbell_press', 'cable_fly', 'lateral_raise', 'skull_crusher'] },
+             { id: 'sat_pull_b', weekday: 'Samstag', name: 'Pull B', exercises: ['lat_pulldown', 'cable_row', 'face_pull', 'hammer_curl'] },
+-            { id: 'sun_legs_b', weekday: 'Sonntag', name: 'Legs B', exercises: ['deadlift', 'leg_press', 'lunges', 'leg_curl'] }
++            { id: 'sun_legs_b', weekday: 'Sonntag', name: 'Legs B', exercises: ['deadlift', 'leg_press', 'lunge', 'leg_curl'] }
+         ]
+     },
+     {
+@@ -39,11 +39,17 @@
+             { id: 'thu_rest', weekday: 'Donnerstag', name: 'Rest', exercises: [] },
+             { id: 'fri_cb2', weekday: 'Freitag', name: 'Chest & Back', exercises: ['low_incline_dumbell_press', 'lat_pulldown', 'machine_shoulder_press', 'preacher_curl', 'overhead_extension'] },
+             { id: 'sat_sa2', weekday: 'Samstag', name: 'Shoulders & Arms', exercises: ['ohp', 'lateral_raise', 'bicep_curl', 'hammer_curl', 'tricep_pushdown'] },
+-            { id: 'sun_legs2', weekday: 'Sonntag', name: 'Legs Volume', exercises: ['leg_press', 'hack_squat', 'lunges', 'leg_curl'] }
++            { id: 'sun_legs2', weekday: 'Sonntag', name: 'Legs Volume', exercises: ['leg_press', 'hack_squat', 'lunge', 'leg_curl'] }
+         ]
+     }
+ ];
+ 
++/** Einheitliche Ruhetag-Erkennung (rest / pause / ruhetag / leer) */
++export const isRestDayName = (dayName) => {
++    const n = (dayName || '').toLowerCase().trim();
++    return n === '' || n.includes('rest') || n.includes('pause') || n.includes('ruhetag');
++};
++
+ export const getSuggestedExercisesForDayName = (dayName) => {
+     const name = (dayName || '').toLowerCase().trim();
+     if (!name) return [];
+diff -ruN --strip-trailing-cr a/src/hooks/useData.js src/hooks/useData.js
+--- a/src/hooks/useData.js	2026-10-07 22:46:01.807645947 +0000
++++ b/src/hooks/useData.js	2026-10-07 22:46:01.856206880 +0000
+@@ -104,7 +104,11 @@
+     useEffect(() => {
+         if (!activeUser) return;
+         const key = `${STORAGE_KEY_BASE}_${activeUser}`;
+-        localStorage.setItem(key, JSON.stringify(data));
++        try {
++            localStorage.setItem(key, JSON.stringify(data));
++        } catch (err) {
++            console.error('Speichern fehlgeschlagen (Speicher voll?)', err);
++        }
+     }, [data, activeUser]);
+ 
+     // Merge default and custom exercises for usage
+@@ -138,7 +142,7 @@
+         setActiveUserStore(name);
+         setActiveUserState(name);
+         
+-        setData(prev => ({ ...prev, user: { name, password } }));
++        setData(prev => ({ ...prev, user: { name } }));
+         setTimeout(() => window.location.reload(), 50);
+         return { ok: true };
+     };
+@@ -194,9 +198,12 @@
+ 
+         setData(prev => {
+             if (isCustom) {
++                // Beim Speichern im Plan-Editor gelten die Plan-Daten wieder; alte Workout-Overrides entfernen
++                const { [planId]: _removed, ...remainingOverrides } = prev.customOverrides || {};
+                 return {
+                     ...prev,
+                     customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p),
++                    customOverrides: remainingOverrides,
+                     currentPlanId: planId
+                 };
+             } else {
+@@ -530,15 +537,27 @@
+     };
+ 
+     const exportUserData = () => {
+-        return JSON.stringify(data, null, 2);
++        // Passwort nie mit exportieren
++        const { user, ...rest } = data;
++        const safeUser = user ? { name: user.name } : null;
++        return JSON.stringify({ schemaVersion: 1, ...rest, user: safeUser }, null, 2);
+     };
+ 
+     const importUserData = (jsonString) => {
+         try {
+             const parsed = JSON.parse(jsonString);
+-            if (!parsed || typeof parsed !== 'object') return { ok: false, error: 'Ungültiges Datenformat' };
+-            setData(parsed);
+-            return { ok: true };
++            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, error: 'Ungültiges Datenformat' };
++            if (!Array.isArray(parsed.logs)) return { ok: false, error: 'Keine Trainingsdaten (logs) gefunden' };
++            const validLogs = parsed.logs.filter(l => l && typeof l.date === 'string' && typeof l.dayId === 'string' && Array.isArray(l.exercises));
++            const { schemaVersion: _v, ...rest } = parsed;
++            setData(prev => ({
++                ...INITIAL_DATA,
++                ...rest,
++                logs: validLogs,
++                prs: recalculatePRs(validLogs),
++                user: prev.user // eingeloggtes Profil bleibt erhalten
++            }));
++            return { ok: true, imported: validLogs.length, skipped: parsed.logs.length - validLogs.length };
+         } catch (err) {
+             return { ok: false, error: err.message };
+         }
