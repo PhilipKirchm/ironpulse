@@ -50,6 +50,9 @@ export const isRestDayName = (dayName) => {
     return n === '' || n.includes('rest') || n.includes('pause') || n.includes('ruhetag');
 };
 
+/** Anzeigename fuer Tage (der gespeicherte Name bleibt unveraendert) */
+export const dayLabel = (name) => ((name || '').trim().toLowerCase() === 'rest' ? 'Ruhetag' : name);
+
 export const getSuggestedExercisesForDayName = (dayName) => {
     const name = (dayName || '').toLowerCase().trim();
     if (!name) return [];

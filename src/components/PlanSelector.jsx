@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Edit2, Copy, Trash2, Plus, Search, X, Dumbbell, ArrowLeft, Zap, Moon } from 'lucide-react';
 import { useData } from '../hooks/useData';
-import { MUSCLE_GROUPS } from '../data/exercises';
+import { MUSCLE_GROUPS, muscleLabel, typeLabel } from '../data/exercises';
 import { getSuggestedExercisesForDayName } from '../data/plans';
 
 const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
@@ -307,12 +307,12 @@ export const PlanSelector = ({ onSelect }) => {
                         <option value="Rest">🌙 Rest – Ruhetag</option>
                         <option value="Push">💪 Push</option>
                         <option value="Pull">🔄 Pull</option>
-                        <option value="Legs">🦵 Legs</option>
-                        <option value="Upper">⬆️ Upper</option>
-                        <option value="Lower">⬇️ Lower</option>
-                        <option value="Chest & Back">🏋️ Chest &amp; Back</option>
-                        <option value="Shoulders & Arms">💎 Shoulders &amp; Arms</option>
-                        <option value="Fullbody">🔥 Fullbody</option>
+                        <option value="Legs">🦵 Beine (Legs)</option>
+                        <option value="Upper">⬆️ Oberkörper (Upper)</option>
+                        <option value="Lower">⬇️ Unterkörper (Lower)</option>
+                        <option value="Chest & Back">🏋️ Brust &amp; Rücken</option>
+                        <option value="Shoulders & Arms">💎 Schultern &amp; Arme</option>
+                        <option value="Fullbody">🔥 Ganzkörper</option>
                         <option value="Cardio">🏃 Cardio</option>
                         {/* Custom name if none of the above */}
                         {!['Rest','Push','Pull','Legs','Upper','Lower','Chest & Back','Shoulders & Arms','Fullbody','Cardio'].includes(day.name) && !rest && (
@@ -351,7 +351,7 @@ export const PlanSelector = ({ onSelect }) => {
                         {day.exercises.map((exId, exIdx) => {
                           const foundEx = allExercises.find(e => e.id === exId);
                           const exName = foundEx ? foundEx.name : exId.replace(/_/g, ' ');
-                          const muscle = foundEx ? foundEx.muscle : 'Andere';
+                          const muscle = foundEx ? muscleLabel(foundEx.muscle) : 'Andere';
                           return (
                             <div key={`${exId}-${exIdx}`} style={{
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -430,7 +430,7 @@ export const PlanSelector = ({ onSelect }) => {
                   background: selectedMuscle === m ? 'var(--primary)' : 'var(--bg-card-highlight)',
                   color: selectedMuscle === m ? '#fff' : 'var(--text-secondary)'
                 }}>
-                  {m === 'ALL' ? 'ALLE' : m}
+                  {m === 'ALL' ? 'ALLE' : muscleLabel(m)}
                 </button>
               ))}
             </div>
@@ -443,7 +443,7 @@ export const PlanSelector = ({ onSelect }) => {
                     onClick={() => handleAddExerciseToDay(ex.id)}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{ex.name}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ex.muscle} · {ex.type}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{muscleLabel(ex.muscle)} · {typeLabel(ex.type)}</div>
                     </div>
                     <Plus size={18} color="var(--primary)" />
                   </button>

@@ -59,7 +59,7 @@ export const StatsView = () => {
             if (best1RM === 0) return null;
 
             return {
-                date: new Date(log.date).toLocaleDateString(),
+                date: new Date(log.date).toLocaleDateString('de-AT'),
                 weight: Math.round(best1RM),
                 actualWeight: bestWeight,
                 actualReps: bestReps,
@@ -87,25 +87,25 @@ export const StatsView = () => {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ padding: '24px', paddingBottom: '100px' }}
         >
-            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Progress</h1>
+            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Fortschritt</h1>
 
             {/* Goals Section */}
             <div className="card" style={{ padding: '24px', marginBottom: '24px', background: 'linear-gradient(135deg, var(--bg-card) 0%, #2c2c2e 100%)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Target color="var(--accent)" /> Goals
+                        <Target color="var(--accent)" /> Ziele
                     </h3>
                     <button
                         onClick={() => isEditingGoals ? handleSaveGoals() : setIsEditingGoals(true)}
                         style={{ background: isEditingGoals ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
                     >
-                        {isEditingGoals ? 'Save' : 'Edit'}
+                        {isEditingGoals ? 'Speichern' : 'Bearbeiten'}
                     </button>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px' }}>
                     <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Bodyweight</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Körpergewicht</div>
                         {isEditingGoals ? (
                             <input
                                 className="input-field"
@@ -123,7 +123,7 @@ export const StatsView = () => {
                         )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Target</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Zielgewicht</div>
                         {isEditingGoals ? (
                             <input
                                 className="input-field"
@@ -146,7 +146,7 @@ export const StatsView = () => {
             <div className="card" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <TrendingUp color="var(--primary)" /> Strength
+                        <TrendingUp color="var(--primary)" /> Kraft
                     </h3>
                     <select
                         value={selectedExercise}
@@ -160,7 +160,7 @@ export const StatsView = () => {
                                 <option key={id} value={id}>{found ? found.name : id.replace(/_/g, ' ')}</option>
                             );
                         })}
-                        {availableExercisesIds.length === 0 && <option>No Data</option>}
+                        {availableExercisesIds.length === 0 && <option>Keine Daten</option>}
                     </select>
                 </div>
 
@@ -177,8 +177,8 @@ export const StatsView = () => {
                                             return (
                                                 <div style={{ background: 'var(--bg-card)', padding: '12px', borderRadius: '12px', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', border: '1px solid var(--border)' }}>
                                                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '4px' }}>{label}</div>
-                                                    <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>{data.weight} kg <span style={{fontSize: '0.7rem', color: 'var(--text-tertiary)'}}>(Est. 1RM)</span></div>
-                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Best Set: {data.actualWeight}kg × {data.actualReps}</div>
+                                                    <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '1.1rem' }}>{data.weight} kg <span style={{fontSize: '0.7rem', color: 'var(--text-tertiary)'}}>(geschätztes 1RM)</span></div>
+                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Bester Satz: {data.actualWeight}kg × {data.actualReps}</div>
                                                 </div>
                                             );
                                         }
@@ -194,8 +194,8 @@ export const StatsView = () => {
                                 <TrendingUp size={20} />
                             </div>
                             <span style={{ fontSize: '0.9rem', textAlign: 'center' }}>
-                                No workout data recorded yet.<br />
-                                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Log a workout to see your progress!</span>
+                                Noch keine Trainingsdaten.<br />
+                                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Trage ein Workout ein, um deinen Fortschritt zu sehen!</span>
                             </span>
                         </div>
                     )}

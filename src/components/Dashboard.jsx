@@ -2,7 +2,8 @@
 import { useData } from '../hooks/useData';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isRestDayName } from '../data/plans';
+import { isRestDayName, dayLabel } from '../data/plans';
+import { muscleLabel } from '../data/exercises';
 import { Settings, Play, Dumbbell, Calendar, ChevronRight, ChevronDown, Check } from 'lucide-react';
 
 export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
@@ -40,20 +41,20 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                 {isCompleted ? (
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 700 }}>
-                            <Check size={16} /> WORKOUT COMPLETED!
+                            <Check size={16} /> TRAINING ABGESCHLOSSEN!
                         </div>
-                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>{currentDay?.name}</h2>
+                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>{dayLabel(currentDay?.name)}</h2>
                         <div style={{ height: '1px', background: 'var(--border)', margin: '20px 0' }} />
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px', fontWeight: 600 }}>NEXT UP</div>
-                        <h3 style={{ fontSize: '1.2rem', margin: '0 0 10px 0' }}>{nextDay?.name}</h3>
-                        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 0 }}>Great job! Stay consistent.</p>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px', fontWeight: 600 }}>ALS NÄCHSTES</div>
+                        <h3 style={{ fontSize: '1.2rem', margin: '0 0 10px 0' }}>{dayLabel(nextDay?.name)}</h3>
+                        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.85rem', marginBottom: 0 }}>Stark! Bleib dran.</p>
                     </div>
                 ) : (
                     <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
-                            <Calendar size={16} /> TODAYS WORKOUT
+                            <Calendar size={16} /> HEUTIGES TRAINING
                         </div>
-                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 24px 0', letterSpacing: '-0.5px' }}>{currentDay?.name}</h2>
+                        <h2 style={{ fontSize: '1.8rem', margin: '0 0 24px 0', letterSpacing: '-0.5px' }}>{dayLabel(currentDay?.name)}</h2>
 
                         {isRestDay ? (
                             <div>
@@ -66,7 +67,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                                 style={{ width: '100%' }}
                                 onClick={onStartWorkout}
                             >
-                                <Play size={20} fill="white" /> Start Workout
+                                <Play size={20} fill="white" /> Training starten
                             </motion.button>
                         )}
                     </>
@@ -75,7 +76,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
 
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 className="subtitle">Personal Records</h3>
+                    <h3 className="subtitle">Persönliche Rekorde</h3>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
@@ -102,7 +103,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Dumbbell size={18} color="var(--primary)" />
-                                            {muscle} <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>({prs.length})</span>
+                                            {muscleLabel(muscle)} <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>({prs.length})</span>
                                         </div>
                                         <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
                                             <ChevronDown size={20} color="var(--text-secondary)" />
@@ -139,7 +140,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                 </div>
                 {Object.keys(data.prs).length === 0 && (
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
-                        No data yet.
+                        Noch keine Daten.
                     </div>
                 )}
             </div>

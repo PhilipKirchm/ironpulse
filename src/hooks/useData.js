@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, useContext, createElement } from 'react';
+import { useState, useEffect, useMemo, createContext, useContext, createElement } from 'react';
 import { isSameDay, parseISO } from 'date-fns';
 import { PLANS } from '../data/plans';
 import { EXERCISES as DEFAULT_EXERCISES } from '../data/exercises';
@@ -111,6 +111,12 @@ function useDataProvider() {
         }
     }, [data, activeUser]);
 
+    // Logs nur bei Aenderung neu sortieren (vorher: bei jedem Aufruf, fuer jede Uebung, bei jedem Render)
+    const logsNewestFirst = useMemo(
+        () => [...(data.logs || [])].sort((a, b) => new Date(b.date) - new Date(a.date)),
+        [data.logs]
+    );
+
     // Merge default and custom exercises for usage
     const getAllExercises = () => {
         return [...DEFAULT_EXERCISES, ...(data.customExercises || [])];
@@ -132,9 +138,9 @@ function useDataProvider() {
     }
 
     const registerUser = (name, password) => {
-        if (!name) return { ok: false, error: 'Name required' };
+        if (!name) return { ok: false, error: 'Name erforderlich' };
         const users = getGlobalUsers();
-        if (users[name]) return { ok: false, error: 'User already exists' };
+        if (users[name]) return { ok: false, error: 'Dieser Name ist bereits vergeben' };
         
         users[name] = password;
         setGlobalUsers(users);
@@ -148,7 +154,7 @@ function useDataProvider() {
     };
 
     const loginUser = (name, password) => {
-        if (!name) return { ok: false, error: 'Name required' };
+        if (!name) return { ok: false, error: 'Name erforderlich' };
         const users = getGlobalUsers();
         
         // Fallback to exactly one global storage item if it exists
@@ -169,7 +175,7 @@ function useDataProvider() {
             setTimeout(() => window.location.reload(), 50);
             return { ok: true };
         }
-        return { ok: false, error: 'Invalid credentials' };
+        return { ok: false, error: 'Name oder Passwort falsch' };
     };
 
     const logoutUser = () => {
@@ -248,9 +254,8 @@ function useDataProvider() {
     };
 
     const getLastLoggedSession = (exerciseId) => {
-        if (!data.logs || data.logs.length === 0) return null;
-        const sorted = [...data.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
-        for (const log of sorted) {
+        if (logsNewestFirst.length === 0) return null;
+        for (const log of logsNewestFirst) {
             if (!log.exercises) continue;
             const ex = log.exercises.find(e => e.id === exerciseId);
             if (ex && ex.sets && ex.sets.length > 0) {

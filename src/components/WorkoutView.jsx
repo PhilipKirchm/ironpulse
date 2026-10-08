@@ -1,10 +1,11 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { RestTimer } from './RestTimer';
 import { ExerciseCard } from './ExerciseCard';
 import { useData } from '../hooks/useData';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Edit2, Check, Search, X, Plus, Save, Moon } from 'lucide-react';
-import { MUSCLE_GROUPS } from '../data/exercises';
+import { MUSCLE_GROUPS, muscleLabel, typeLabel } from '../data/exercises';
 import confetti from 'canvas-confetti';
 
 export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
@@ -15,6 +16,25 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     const [machineSelections, setMachineSelections] = useState({}); // Stores machine per exerciseId
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Pausentimer
+    const [restDuration, setRestDuration] = useState(() => {
+        try { return Number(localStorage.getItem('ironpulse_rest_seconds')) || 90; } catch { return 90; }
+    });
+    const [restEndAt, setRestEndAt] = useState(null);
+    const draftRef = useRef(null);
+
+    const handleSetCompleted = () => {
+        if (editLog) return; // beim Bearbeiten alter Eintraege kein Timer
+        setRestEndAt(Date.now() + restDuration * 1000);
+    };
+    const handlePreset = (seconds) => {
+        setRestDuration(seconds);
+        try { localStorage.setItem('ironpulse_rest_seconds', String(seconds)); } catch { /* ignorieren */ }
+        setRestEndAt(Date.now() + seconds * 1000);
+    };
+    const handleAdjust = (delta) => setRestEndAt(prev => (prev ? prev + delta * 1000 : prev));
+    const closeTimer = useCallback(() => setRestEndAt(null), []);
     const [swappingId, setSwappingId] = useState(null); // ID or 'NEW'
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -88,10 +108,23 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
 
     // Auto-save draft
     useEffect(() => {
-        if (!editLog && exercises.length > 0) {
-            saveWorkoutDraft(dayId, { exercises, setsData, notes, machineSelections });
-        }
+        if (editLog || exercises.length === 0) return;
+        draftRef.current = { exercises, setsData, notes, machineSelections };
+        const t = setTimeout(() => {
+            if (draftRef.current) {
+                saveWorkoutDraft(dayId, draftRef.current);
+                draftRef.current = null;
+            }
+        }, 600);
+        return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [exercises, setsData, notes, machineSelections, dayId, editLog]);
+
+    // Beim Verlassen der Ansicht noch nicht gespeicherten Entwurf sichern
+    useEffect(() => () => {
+        if (draftRef.current) saveWorkoutDraft(dayId, draftRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleUpdateSets = (exId, newSets) => {
         setSetsData(prev => ({ ...prev, [exId]: newSets }));
@@ -109,6 +142,8 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     const handleFinish = () => {
         if (isSaving) return; // verhindert doppeltes Speichern
         setIsSaving(true);
+        draftRef.current = null; // kein Entwurf mehr nach dem Speichern
+        setRestEndAt(null);
         const payloadExercises = exercises.map(ex => ({
             id: ex.id,
             // Koerpergewichtsuebungen: leeres Gewicht wird als 0 kg gespeichert statt verworfen
@@ -260,19 +295,19 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
         <motion.div
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
             className="scroll-container"
-            style={{ height: '100%', paddingBottom: 'calc(100px + env(safe-area-inset-bottom, 20px))', padding: '20px', boxSizing: 'border-box' }}
+            style={{ height: '100%', padding: '20px', paddingBottom: restEndAt ? 'calc(190px + env(safe-area-inset-bottom, 20px))' : 'calc(100px + env(safe-area-inset-bottom, 20px))', boxSizing: 'border-box' }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', marginTop: '10px' }}>
                 <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '1rem', fontWeight: 500 }}>
-                    <ChevronLeft size={20} /> Back
+                    <ChevronLeft size={20} /> Zurück
                 </button>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Active Workout</h2>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Aktives Training</h2>
                 <button
                     onClick={() => setIsEditing(!isEditing)}
                     style={{ background: isEditing ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: isEditing ? 'white' : 'var(--text-main)', border: 'none', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                     {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
-                    {isEditing ? 'Done' : 'Edit'}
+                    {isEditing ? 'Fertig' : 'Bearbeiten'}
                 </button>
             </div>
 
@@ -292,6 +327,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         lastSession={getLastLoggedSession(ex.id)}
                         machineSelection={machineSelections[ex.id]}
                         onMachineChange={(mfg) => handleMachineChange(ex.id, mfg)}
+                        onSetCompleted={handleSetCompleted}
                     />
                 ))}
                 {exercises.length === 0 && (
@@ -311,7 +347,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                 className="card"
                 style={{ width: '100%', marginTop: '16px', padding: '16px', border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
             >
-                <Plus /> Add Exercise
+                <Plus /> Übung hinzufügen
             </button>
 
             {!isEditing && (
@@ -323,9 +359,19 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         onClick={handleFinish}
                         disabled={isSaving}
                     >
-                        {editLog ? 'Save Edit' : 'Finish Workout'}
+                        {editLog ? 'Änderung speichern' : 'Training beenden'}
                     </motion.button>
                 </div>
+            )}
+
+            {restEndAt && !isSaving && (
+                <RestTimer
+                    endAt={restEndAt}
+                    duration={restDuration}
+                    onAdjust={handleAdjust}
+                    onPreset={handlePreset}
+                    onClose={closeTimer}
+                />
             )}
 
             {/* Universal Search Modal (Add/Swap) */}
@@ -342,17 +388,17 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                     autoFocus
                                     className="input-field"
                                     style={{ paddingLeft: '40px' }}
-                                    placeholder={isCreating ? "New Exercise Name" : "Search exercises..."}
+                                    placeholder={isCreating ? "Name der neuen Übung" : "Übung suchen…"}
                                     value={isCreating ? newExerciseName : searchQuery}
                                     onChange={(e) => isCreating ? setNewExerciseName(e.target.value) : setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            <button onClick={() => setSwappingId(null)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                            <button onClick={() => setSwappingId(null)} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>Abbrechen</button>
                         </div>
 
                         {isCreating ? (
                             <div style={{ padding: '20px' }}>
-                                <div style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Muscle Group</div>
+                                <div style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>Muskelgruppe</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px' }}>
                                     {MUSCLE_GROUPS.map(m => (
                                         <button
@@ -367,7 +413,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                                 fontWeight: 500
                                             }}
                                         >
-                                            {m}
+                                            {muscleLabel(m)}
                                         </button>
                                     ))}
                                 </div>
@@ -376,7 +422,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                     style={{ width: '100%' }}
                                     onClick={handleCreateCustom}
                                 >
-                                    <Save size={18} /> Save & Add
+                                    <Save size={18} /> Speichern & hinzufügen
                                 </button>
                             </div>
                         ) : (
@@ -387,12 +433,12 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                         className="card"
                                         style={{ width: '100%', padding: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(10, 132, 255, 0.1)', border: '1px solid var(--primary)', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
                                     >
-                                        <Plus size={20} /> Create "{searchQuery}"
+                                        <Plus size={20} /> „{searchQuery}“ erstellen
                                     </button>
                                 )}
 
                                 <div style={{ padding: '16px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    {searchQuery ? 'SEARCH RESULTS' : (currentSwapExercise ? `SUGGESTED (${currentSwapExercise?.muscle.toUpperCase()})` : 'ALL EXERCISES')}
+                                    {searchQuery ? 'SUCHERGEBNISSE' : (currentSwapExercise ? `VORSCHLÄGE (${muscleLabel(currentSwapExercise?.muscle).toUpperCase()})` : 'ALLE ÜBUNGEN')}
                                 </div>
                                 <div style={{ display: 'grid', gap: '8px' }}>
                                     {filteredExercises.map(ex => (
@@ -404,7 +450,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                         >
                                             <div>
                                                 <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ex.name}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ex.muscle} • {ex.type}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{muscleLabel(ex.muscle)} • {typeLabel(ex.type)}</div>
                                             </div>
                                             {swappingId !== 'NEW' ?
                                                 <ChevronLeft size={16} style={{ transform: 'rotate(180deg)', color: 'var(--text-tertiary)' }} /> :
@@ -413,7 +459,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                                         </button>
                                     ))}
                                     {filteredExercises.length === 0 && !searchQuery && (
-                                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px' }}>No exercises found.</div>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '20px' }}>Keine Übungen gefunden.</div>
                                     )}
                                 </div>
                             </div>

@@ -2,6 +2,7 @@ import { useData } from '../hooks/useData';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { de } from 'date-fns/locale';
 import { isRestDayName } from '../data/plans';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 
@@ -47,7 +48,7 @@ export const CalendarView = ({ onEditWorkout }) => {
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingTop: '10px' }}>
                 <div>
-                    <h1 className="title-lg" style={{ margin: 0, fontSize: '1.6rem' }}>{format(currentMonth, 'MMMM')}</h1>
+                    <h1 className="title-lg" style={{ margin: 0, fontSize: '1.6rem' }}>{format(currentMonth, 'MMMM', { locale: de })}</h1>
                     <div style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', fontWeight: 500 }}>{format(currentMonth, 'yyyy')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', background: 'var(--bg-card)', padding: '4px', borderRadius: '30px', border: '1px solid var(--border)' }}>
@@ -89,13 +90,13 @@ export const CalendarView = ({ onEditWorkout }) => {
                     }}
                 >
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                    DELOAD WEEK
+                    DELOAD-WOCHE
                 </motion.div>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(day => (
-                    <div key={day} style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.7rem', fontWeight: 700, opacity: 0.5 }}>
+                {['M', 'D', 'M', 'D', 'F', 'S', 'S'].map((day, i) => (
+                    <div key={i} style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.7rem', fontWeight: 700, opacity: 0.5 }}>
                         {day}
                     </div>
                 ))}
@@ -159,7 +160,7 @@ export const CalendarView = ({ onEditWorkout }) => {
             {/* Details Section */}
             <div style={{ marginTop: '24px', flex: 1 }}>
                 <h3 className="subtitle" style={{ marginBottom: '16px' }}>
-                    {isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMMM d, yyyy')}
+                    {isSameDay(selectedDate, new Date()) ? 'Heute' : format(selectedDate, 'd. MMMM yyyy', { locale: de })}
                 </h3>
 
                 {selectedLog ? (
@@ -169,12 +170,8 @@ export const CalendarView = ({ onEditWorkout }) => {
                                 {selectedLog.dayId.replace(/_/g, ' ').toUpperCase()}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => onEditWorkout(selectedLog)} style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>
-                                    EDIT
-                                </button>
-                                <div style={{ background: 'var(--accent)', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>
-                                    COMPLETED
-                                </div>
+                                <button onClick={() => onEditWorkout(selectedLog)} style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>BEARBEITEN</button>
+                                <div style={{ background: 'var(--accent)', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>ERLEDIGT</div>
                             </div>
                         </div>
 
@@ -201,9 +198,9 @@ export const CalendarView = ({ onEditWorkout }) => {
                 ) : (
                     <div className="card" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border)', background: 'transparent' }}>
                         {isRestDayName(getWorkoutForDate(selectedDate)?.name) ? (
-                            <p>Rest day. No workout logged.</p>
+                            <p>Ruhetag. Kein Training eingetragen.</p>
                         ) : (
-                            <p>No workout completed for this day yet.</p>
+                            <p>An diesem Tag ist noch kein Training eingetragen.</p>
                         )}
                     </div>
                 )}
@@ -211,10 +208,10 @@ export const CalendarView = ({ onEditWorkout }) => {
 
             <div className="card" style={{ marginTop: '20px', padding: '16px', border: '1px solid var(--border)', marginBottom: '10px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
-                    <LegendItem icon="🔥" label="Planned" />
-                    <LegendItem icon="✅" label="Completed" />
-                    <LegendItem icon="☕" label="Rest" />
-                    <LegendItem color="var(--primary)" label="Selected" />
+                    <LegendItem icon="🔥" label="Geplant" />
+                    <LegendItem icon="✅" label="Erledigt" />
+                    <LegendItem icon="☕" label="Ruhetag" />
+                    <LegendItem color="var(--primary)" label="Ausgewählt" />
                 </div>
             </div>
         </motion.div>

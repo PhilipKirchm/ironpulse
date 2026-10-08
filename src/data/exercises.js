@@ -150,4 +150,16 @@ export const EXERCISES = [
     { id: 'russian_twist', name: 'Russian Twist', muscle: 'Abs', type: 'Isolation', substitutes: [] }
 ];
 
+// Anzeigenamen (die gespeicherten Werte bleiben englisch, damit alte Daten weiter passen)
+export const MUSCLE_LABELS = {
+    Chest: 'Brust', Back: 'Rücken', Shoulders: 'Schultern', Biceps: 'Bizeps', Triceps: 'Trizeps',
+    Forearms: 'Unterarme', Quads: 'Quadrizeps', Hamstrings: 'Beinbeuger', Glutes: 'Gesäß',
+    Calves: 'Waden', Abs: 'Bauch', Other: 'Andere'
+};
+export const TYPE_LABELS = { Compound: 'Grundübung', Isolation: 'Isolationsübung', Custom: 'Eigene Übung' };
+export const MACHINE_LABELS = { 'Free Weights': 'Freie Gewichte', Other: 'Andere' };
+export const muscleLabel = (m) => MUSCLE_LABELS[m] || m || '';
+export const typeLabel = (t) => TYPE_LABELS[t] || t || '';
+export const machineLabel = (m) => MACHINE_LABELS[m] || m || '';
+
 export const getExerciseById = (id) => EXERCISES.find(e => e.id === id);

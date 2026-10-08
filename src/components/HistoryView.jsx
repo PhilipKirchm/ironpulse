@@ -2,6 +2,7 @@
 import { useData } from '../hooks/useData';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 
 export const HistoryView = ({ onEditWorkout }) => {
@@ -15,7 +16,7 @@ export const HistoryView = ({ onEditWorkout }) => {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ padding: '24px', paddingBottom: '100px' }}
         >
-            <h1 className="title-lg" style={{ paddingTop: '40px' }}>History</h1>
+            <h1 className="title-lg" style={{ paddingTop: '40px' }}>Verlauf</h1>
 
             <div style={{ display: 'grid', gap: '16px', marginTop: '24px' }}>
                 {sortedLogs.map((log, i) => {
@@ -33,7 +34,7 @@ export const HistoryView = ({ onEditWorkout }) => {
                             style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center' }}
                         >
                             <div style={{ background: 'var(--bg-card-highlight)', padding: '12px', borderRadius: '12px', textAlign: 'center', minWidth: '50px' }}>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{format(date, 'MMM')}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{format(date, 'MMM', { locale: de })}</div>
                                 <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{format(date, 'd')}</div>
                             </div>
 
@@ -42,14 +43,12 @@ export const HistoryView = ({ onEditWorkout }) => {
                                     {dayId.replace(/_/g, ' ').toUpperCase()}
                                 </div>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                    {log.exercises.length} Exercises Completed
+                                    {log.exercises.length} Übungen
                                 </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
-                                <button onClick={() => onEditWorkout(log)} style={{ background: 'transparent', color: 'var(--primary)', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '4px 8px' }}>
-                                    Edit
-                                </button>
+                                <button onClick={() => onEditWorkout(log)} style={{ background: 'transparent', color: 'var(--primary)', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '4px 8px' }}>Bearbeiten</button>
                                 <div style={{ color: 'var(--accent)' }}>
                                     <CheckCircle2 />
                                 </div>
@@ -61,7 +60,7 @@ export const HistoryView = ({ onEditWorkout }) => {
                 {sortedLogs.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                         <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-                        <p>No workouts logged yet. Go make history!</p>
+                        <p>Noch keine Workouts eingetragen. Zeit für das erste!</p>
                     </div>
                 )}
             </div>

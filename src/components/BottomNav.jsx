@@ -18,25 +18,25 @@ export const BottomNav = ({ activeTab, onTabChange }) => {
         }}>
             <Tab
                 icon={<Calendar size={24} />}
-                label="Calendar"
+                label="Kalender"
                 isActive={activeTab === 'calendar'}
                 onClick={() => onTabChange('calendar')}
             />
             <Tab
                 icon={<LayoutDashboard size={24} />}
-                label="Workout"
+                label="Training"
                 isActive={activeTab === 'dashboard'}
                 onClick={() => onTabChange('dashboard')}
             />
             <Tab
                 icon={<TrendingUp size={24} />}
-                label="Progress"
+                label="Fortschritt"
                 isActive={activeTab === 'stats'}
                 onClick={() => onTabChange('stats')}
             />
             <Tab
                 icon={<User size={24} />}
-                label="Profile"
+                label="Profil"
                 isActive={activeTab === 'profile'}
                 onClick={() => onTabChange('profile')}
             />
