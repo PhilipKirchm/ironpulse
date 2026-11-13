@@ -4,12 +4,16 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isRestDayName, dayLabel } from '../data/plans';
 import { muscleLabel } from '../data/exercises';
+import { DayPicker } from './DayPicker';
+import { WellnessCard } from './WellnessCard';
 import { Settings, Play, Dumbbell, Calendar, ChevronRight, ChevronDown, Check } from 'lucide-react';
 
 export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
-    const { getCurrentDay, hasCompletedWorkoutToday, getNextTrainingDay, data, getPlan, getAllExercises } = useData();
+    const { getCurrentDay, hasCompletedWorkoutToday, getNextTrainingDay, data, getPlan, getAllExercises, getCycleInfo } = useData();
     const currentDay = getCurrentDay();
     const [openMuscle, setOpenMuscle] = useState(null);
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const cycle = getCycleInfo();
     const isCompleted = hasCompletedWorkoutToday();
     const nextDay = getNextTrainingDay();
     const plan = getPlan();
@@ -27,6 +31,9 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                 <div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Aktiver Trainingsplan</div>
                     <h1 className="title-lg" style={{ margin: '2px 0 0 0', fontSize: '1.4rem' }}>{plan.name}</h1>
+                    <div style={{ marginTop: 6, fontSize: '0.75rem', fontWeight: 700, color: cycle.isDeload ? 'var(--accent)' : 'var(--primary)' }}>
+                        Woche {cycle.week}/{cycle.length} · {cycle.isDeload ? 'Deload' : 'Aufbau'}
+                    </div>
                 </div>
                 <button 
                     onClick={onOpenSettings} 
@@ -36,6 +43,8 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                     <span>Plan ändern</span>
                 </button>
             </div>
+
+            {!isCompleted && <WellnessCard />}
 
             <div className="card" style={{ padding: '24px', marginBottom: '24px' }}>
                 {isCompleted ? (
@@ -59,6 +68,9 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                         {isRestDay ? (
                             <div>
                                 <p style={{ color: 'var(--text-secondary)', marginBottom: 0 }}>Ruhetage sind wichtig – heute regenerieren.</p>
+                                <button className="btn-secondary" style={{ width: '100%', marginTop: 16 }} onClick={() => setPickerOpen(true)}>
+                                    Trotzdem trainieren
+                                </button>
                             </div>
                         ) : (
                             <motion.button
@@ -69,6 +81,14 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                             >
                                 <Play size={20} fill="white" /> Training starten
                             </motion.button>
+                        )}
+                        {!isRestDay && (
+                            <button
+                                onClick={() => setPickerOpen(true)}
+                                style={{ width: '100%', marginTop: 12, background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', padding: 8 }}
+                            >
+                                Anderes Training heute?
+                            </button>
                         )}
                     </>
                 )}
@@ -144,6 +164,7 @@ export const Dashboard = ({ onStartWorkout, onOpenSettings }) => {
                     </div>
                 )}
             </div>
+            {pickerOpen && <DayPicker date={new Date()} onClose={() => setPickerOpen(false)} />}
         </motion.div>
     );
 };

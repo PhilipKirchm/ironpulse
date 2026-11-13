@@ -3,15 +3,20 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { de } from 'date-fns/locale';
-import { isRestDayName } from '../data/plans';
+import { isRestDayName, dayLabel } from '../data/plans';
+import { DayPicker } from './DayPicker';
+import { logDurationMin, logLoadAU } from '../lib/progression';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
 
 export const CalendarView = ({ onEditWorkout }) => {
-    const { getWorkoutForDate, isDeloadWeek, data, getAllExercises } = useData();
+    const { getWorkoutForDate, getActualWorkoutForDate, isDeloadWeek, data, getAllExercises } = useData();
     const allExercises = getAllExercises();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [direction, setDirection] = useState(0);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [pickerDate, setPickerDate] = useState(null);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
     const nextMonth = () => {
         setDirection(1);
@@ -32,7 +37,7 @@ export const CalendarView = ({ onEditWorkout }) => {
         end: endDate
     });
 
-    const isDeload = isDeloadWeek(currentMonth);
+    const isDeload = isDeloadWeek(new Date());
 
     const selectedLog = data.logs?.find(log => isSameDay(parseISO(log.date), selectedDate));
 
@@ -109,7 +114,7 @@ export const CalendarView = ({ onEditWorkout }) => {
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}
             >
                 {calendarDays.map((day) => {
-                    const workout = getWorkoutForDate(day);
+                    const workout = getActualWorkoutForDate(day);
                     const isToday = isSameDay(day, new Date());
                     const isSelected = isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -150,7 +155,7 @@ export const CalendarView = ({ onEditWorkout }) => {
                                 {isRest ? 'PAUSE' : workout?.name?.split(' ')[0]?.toUpperCase()}
                             </div>
                             <div style={{ fontSize: '0.75rem', filter: isSelected ? 'invert(1)' : 'none', position: 'relative' }}>
-                                {hasLog ? '✅' : (isRest ? '☕' : '🔥')}
+                                {hasLog ? '✅' : (isRest ? '☕' : (day < todayStart ? '○' : '🔥'))}
                             </div>
                         </motion.div>
                     );
@@ -167,7 +172,7 @@ export const CalendarView = ({ onEditWorkout }) => {
                     <div className="card" style={{ padding: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary)' }}>
-                                {selectedLog.dayId.replace(/_/g, ' ').toUpperCase()}
+                                {dayLabel(getActualWorkoutForDate(selectedDate)?.name || selectedLog.dayId).toUpperCase()}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button onClick={() => onEditWorkout(selectedLog)} style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>BEARBEITEN</button>
@@ -175,6 +180,13 @@ export const CalendarView = ({ onEditWorkout }) => {
                             </div>
                         </div>
 
+                        {(selectedLog.durationSec > 0 || selectedLog.rpe > 0) && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                {logDurationMin(selectedLog) && <span style={chip}>⏱ {Math.round(logDurationMin(selectedLog))} min</span>}
+                                {selectedLog.rpe > 0 && <span style={chip}>RPE {selectedLog.rpe}</span>}
+                                {logLoadAU(selectedLog) && <span style={chip}>{Math.round(logLoadAU(selectedLog))} AU</span>}
+                            </div>
+                        )}
                         <div style={{ display: 'grid', gap: '12px' }}>
                             {selectedLog.exercises.map((ex, idx) => {
                                 const exerciseInfo = allExercises.find(e => e.id === ex.id) ||
@@ -202,6 +214,16 @@ export const CalendarView = ({ onEditWorkout }) => {
                         ) : (
                             <p>An diesem Tag ist noch kein Training eingetragen.</p>
                         )}
+                        <div style={{ fontSize: '0.8rem', marginBottom: 12 }}>
+                            Geplant: <b>{dayLabel(getWorkoutForDate(selectedDate)?.name)}</b>
+                        </div>
+                        <button
+                            onClick={() => setPickerDate(selectedDate)}
+                            className="btn-secondary"
+                            style={{ width: '100%' }}
+                        >
+                            Training für diesen Tag ändern
+                        </button>
                     </div>
                 )}
             </div>
@@ -211,12 +233,16 @@ export const CalendarView = ({ onEditWorkout }) => {
                     <LegendItem icon="🔥" label="Geplant" />
                     <LegendItem icon="✅" label="Erledigt" />
                     <LegendItem icon="☕" label="Ruhetag" />
+                    <LegendItem icon="○" label="Nicht trainiert" />
                     <LegendItem color="var(--primary)" label="Ausgewählt" />
                 </div>
             </div>
+            {pickerDate && <DayPicker date={pickerDate} onClose={() => setPickerDate(null)} />}
         </motion.div>
     );
 };
+
+const chip = { background: 'var(--bg-card-highlight)', padding: '4px 10px', borderRadius: '10px', fontWeight: 600 };
 
 const LegendItem = ({ icon, label, color }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>

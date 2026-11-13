@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, Target, TrendingUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { TrainingLoad } from './TrainingLoad';
 
 export const StatsView = () => {
     const { data, setGoal, getAllExercises } = useData();
@@ -88,6 +89,8 @@ export const StatsView = () => {
             style={{ padding: '24px', paddingBottom: '100px' }}
         >
             <h1 className="title-lg" style={{ paddingTop: '40px' }}>Fortschritt</h1>
+
+            <TrainingLoad />
 
             {/* Goals Section */}
             <div className="card" style={{ padding: '24px', marginBottom: '24px', background: 'linear-gradient(135deg, var(--bg-card) 0%, #2c2c2e 100%)' }}>

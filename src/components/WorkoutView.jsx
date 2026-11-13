@@ -1,6 +1,9 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { RestTimer } from './RestTimer';
+import { ElapsedTime } from './ElapsedTime';
+import { FinishSheet } from './FinishSheet';
+import { dateKey, readinessAdvice, wellnessScore, suggestNext } from '../lib/progression';
 import { ExerciseCard } from './ExerciseCard';
 import { useData } from '../hooks/useData';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,13 +12,15 @@ import { MUSCLE_GROUPS, muscleLabel, typeLabel } from '../data/exercises';
 import confetti from 'canvas-confetti';
 
 export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
-    const { getExercisesForDay, customizeDay, saveWorkout, updateLog, data, addCustomExercise, getAllExercises, saveWorkoutDraft, clearWorkoutDraft, setMachineSelection, getMachineSelection, getLastLoggedSession } = useData();
+    const { getExercisesForDay, customizeDay, saveWorkout, updateLog, data, addCustomExercise, getAllExercises, saveWorkoutDraft, clearWorkoutDraft, setMachineSelection, getMachineSelection, getLastLoggedSession, isDeloadWeek } = useData();
     const [exercises, setExercises] = useState([]);
     const [setsData, setSetsData] = useState({});
     const [notes, setNotes] = useState({}); // Stores notes per exerciseId
     const [machineSelections, setMachineSelections] = useState({}); // Stores machine per exerciseId
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [startedAt, setStartedAt] = useState(() => Date.now());
+    const [showFinish, setShowFinish] = useState(false);
 
     // Pausentimer
     const [restDuration, setRestDuration] = useState(() => {
@@ -72,7 +77,10 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                 setSetsData(draft.setsData);
                 setNotes(draft.notes || {});
                 setMachineSelections(draft.machineSelections || {});
+                // Trainingsstart aus dem Entwurf uebernehmen (nur wenn er nicht uralt ist)
+                setStartedAt(draft.startedAt && Date.now() - draft.startedAt < 12 * 3600 * 1000 ? draft.startedAt : Date.now());
             } else {
+                setStartedAt(Date.now());
                 const loaded = getExercisesForDay(planId, dayId);
                 setExercises(loaded);
                 setSetsData(prev => {
@@ -109,7 +117,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
     // Auto-save draft
     useEffect(() => {
         if (editLog || exercises.length === 0) return;
-        draftRef.current = { exercises, setsData, notes, machineSelections };
+        draftRef.current = { exercises, setsData, notes, machineSelections, startedAt };
         const t = setTimeout(() => {
             if (draftRef.current) {
                 saveWorkoutDraft(dayId, draftRef.current);
@@ -118,7 +126,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
         }, 600);
         return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [exercises, setsData, notes, machineSelections, dayId, editLog]);
+    }, [exercises, setsData, notes, machineSelections, startedAt, dayId, editLog]);
 
     // Beim Verlassen der Ansicht noch nicht gespeicherten Entwurf sichern
     useEffect(() => () => {
@@ -139,7 +147,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
         setMachineSelection(exId, manufacturer);
     };
 
-    const handleFinish = () => {
+    const handleFinish = (extra = {}) => {
         if (isSaving) return; // verhindert doppeltes Speichern
         setIsSaving(true);
         draftRef.current = null; // kein Entwurf mehr nach dem Speichern
@@ -174,14 +182,23 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
             return;
         }
 
+        const endedAt = Date.now();
+        const durationSec = Math.max(1, Math.round(extra.durationMin ? extra.durationMin * 60 : (endedAt - startedAt) / 1000));
         const log = {
-            date: new Date().toISOString(),
+            date: new Date(endedAt).toISOString(),
             planId,
             dayId,
-            exercises: payloadExercises
+            exercises: payloadExercises,
+            startedAt: new Date(startedAt).toISOString(),
+            endedAt: new Date(endedAt).toISOString(),
+            durationSec,
+            rpe: extra.rpe ?? null
         };
         saveWorkout(log);
         clearWorkoutDraft(dayId);
+        // Naechstes Mal startet dieser Trainingstag mit genau diesen Uebungen
+        customizeDay(planId, dayId, exercises.map(e => e.id));
+        setShowFinish(false);
 
         confetti({
             particleCount: 150,
@@ -291,6 +308,21 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
 
     const currentSwapExercise = swappingId === 'NEW' ? null : exercises.find(e => e.id === swappingId);
 
+    // Empfehlungen: Deload-Woche bzw. Wohlbefinden von heute
+    const wellnessToday = (data.wellness || {})[dateKey(new Date())];
+    const advice = readinessAdvice(wellnessScore(wellnessToday));
+    const deload = isDeloadWeek();
+    const factor = deload ? 0.6 : (advice?.factor ?? 1);
+    const banner = editLog ? null : deload
+        ? { color: 'var(--accent)', title: 'Deload-Woche', text: 'Gewichte wie zuletzt halten, ca. 40 % weniger Sätze, RPE höchstens 6.' }
+        : (advice && advice.level !== 'good'
+            ? { color: advice.level === 'low' ? 'var(--danger)' : '#ff9f0a', title: advice.title, text: advice.text }
+            : null);
+    const targetFor = (exId) => {
+        const last = getLastLoggedSession(exId);
+        return last ? suggestNext(last.sets, { factor, deload, lastRpe: last.rpe }) : null;
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
@@ -301,7 +333,15 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                 <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '1rem', fontWeight: 500 }}>
                     <ChevronLeft size={20} /> Zurück
                 </button>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Aktives Training</h2>
+                <div style={{ textAlign: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Aktives Training</h2>
+                    {!editLog && <div style={{ marginTop: 4 }}><ElapsedTime startedAt={startedAt} /></div>}
+                    {editLog && editLog.durationSec > 0 && (
+                        <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {Math.round(editLog.durationSec / 60)} min{editLog.rpe ? ` · RPE ${editLog.rpe}` : ''}
+                        </div>
+                    )}
+                </div>
                 <button
                     onClick={() => setIsEditing(!isEditing)}
                     style={{ background: isEditing ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: isEditing ? 'white' : 'var(--text-main)', border: 'none', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -310,6 +350,13 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                     {isEditing ? 'Fertig' : 'Bearbeiten'}
                 </button>
             </div>
+
+            {banner && (
+                <div className="card" style={{ padding: 14, marginBottom: 16, borderLeft: `4px solid ${banner.color}` }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{banner.title}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 4 }}>{banner.text}</div>
+                </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {exercises.map((ex, i) => (
@@ -328,6 +375,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         machineSelection={machineSelections[ex.id]}
                         onMachineChange={(mfg) => handleMachineChange(ex.id, mfg)}
                         onSetCompleted={handleSetCompleted}
+                        target={editLog ? null : targetFor(ex.id)}
                     />
                 ))}
                 {exercises.length === 0 && (
@@ -356,7 +404,7 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                         whileTap={{ scale: 0.98 }}
                         className="btn-primary"
                         style={{ width: '100%', maxWidth: '500px' }}
-                        onClick={handleFinish}
+                        onClick={() => (editLog ? handleFinish() : setShowFinish(true))}
                         disabled={isSaving}
                     >
                         {editLog ? 'Änderung speichern' : 'Training beenden'}
@@ -364,7 +412,16 @@ export const WorkoutView = ({ planId, dayId, onFinish, onBack, editLog }) => {
                 </div>
             )}
 
-            {restEndAt && !isSaving && (
+            {showFinish && (
+                <FinishSheet
+                    durationMin={Math.max(1, (Date.now() - startedAt) / 60000)}
+                    saving={isSaving}
+                    onConfirm={handleFinish}
+                    onCancel={() => setShowFinish(false)}
+                />
+            )}
+
+            {restEndAt && !isSaving && !showFinish && (
                 <RestTimer
                     endAt={restEndAt}
                     duration={restDuration}

@@ -1,10 +1,10 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Repeat, Trash2, Trophy, MoreHorizontal, Plus, X, RotateCcw } from 'lucide-react';
+import { Check, Repeat, Trash2, Trophy, MoreHorizontal, Plus, X, RotateCcw, Target } from 'lucide-react';
 import { useState } from 'react';
 import { MACHINE_MANUFACTURERS, muscleLabel, machineLabel } from '../data/exercises';
 
-export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onSwap, onRemove, pr, lastSession, note, onUpdateNote, machineSelection, onMachineChange, onSetCompleted }) => {
+export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onSwap, onRemove, pr, lastSession, note, onUpdateNote, machineSelection, onMachineChange, onSetCompleted, target }) => {
     const addSet = () => {
         onUpdateSets(exercise.id, [...sets, { weight: '', reps: '', done: false }]);
     };
@@ -71,6 +71,17 @@ export const ExerciseCard = ({ exercise, onUpdateSets, sets = [], isEditing, onS
                     >
                         <RotateCcw size={12} /> Übernehmen
                     </button>
+                </div>
+            )}
+
+            {!isEditing && target && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(48, 209, 88, 0.08)', border: '1px solid rgba(48, 209, 88, 0.25)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <Target size={14} color="var(--accent)" />
+                    <span>
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Ziel heute:</span> {target.text}
+                        {target.setCount ? ` · ${target.setCount} Sätze` : ''}
+                        <span style={{ opacity: 0.7 }}> ({target.label})</span>
+                    </span>
                 </div>
             )}
 

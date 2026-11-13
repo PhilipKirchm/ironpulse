@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useMemo, createContext, useContext, createElement } from 'react';
 import { isSameDay, parseISO } from 'date-fns';
+import { cycleInfo, dateKey } from '../lib/progression';
 import { PLANS } from '../data/plans';
 import { EXERCISES as DEFAULT_EXERCISES } from '../data/exercises';
 
@@ -39,7 +40,11 @@ const INITIAL_DATA = {
     machineSelections: {}, // { exerciseId: 'Technogym' | 'Gym80' | 'Panata' | etc }
     // New: simple auth and custom plans
     user: null, // { name, password }
-    customPlans: [] // user created plans (merged with PLANS in memory)
+    customPlans: [], // user created plans (merged with PLANS in memory)
+    scheduleOverrides: {}, // { 'YYYY-MM-DD': { planId, dayId } } – anderes Training an einem bestimmten Datum
+    wellness: {}, // { 'YYYY-MM-DD': { sleep, energy, soreness, stress } } (1-5, 5 = gut)
+    settings: { weeklyProgression: 12 }, // woechentliche Steigerung in Prozent
+    cycleStart: null // Beginn des 4-Wochen-Zyklus (ISO), sonst startDate
     // Note: We merge DEFAULT_EXERCISES + customExercises in memory
 };
 
@@ -54,7 +59,7 @@ function useDataProvider() {
 
         try {
             const saved = localStorage.getItem(key);
-            if (saved) return JSON.parse(saved);
+            if (saved) return { ...INITIAL_DATA, ...JSON.parse(saved) };
 
             // Migration step for existing users
             const oldSaved = localStorage.getItem(STORAGE_KEY_BASE);
@@ -83,7 +88,7 @@ function useDataProvider() {
         try {
             const saved = localStorage.getItem(key);
             if (saved) {
-                setData(JSON.parse(saved));
+                setData({ ...INITIAL_DATA, ...JSON.parse(saved) });
             } else {
                 const oldSaved = localStorage.getItem(STORAGE_KEY_BASE);
                 if (oldSaved) {
@@ -204,19 +209,32 @@ function useDataProvider() {
 
         setData(prev => {
             if (isCustom) {
-                // Beim Speichern im Plan-Editor gelten die Plan-Daten wieder; alte Workout-Overrides entfernen
-                const { [planId]: _removed, ...remainingOverrides } = prev.customOverrides || {};
+                // Nur Tage, deren Uebungen im Editor geaendert wurden, verlieren ihre gelernte Uebungsliste
+                const oldPlan = (prev.customPlans || []).find(p => p.id === planId);
+                const planOv = { ...((prev.customOverrides || {})[planId] || {}) };
+                (updatedPlan.days || []).forEach(day => {
+                    const old = oldPlan?.days?.find(d => d.id === day.id);
+                    if (!old || JSON.stringify(old.exercises) !== JSON.stringify(day.exercises)) delete planOv[day.id];
+                });
                 return {
                     ...prev,
                     customPlans: (prev.customPlans || []).map(p => p.id === planId ? { ...p, ...updatedPlan } : p),
-                    customOverrides: remainingOverrides,
+                    customOverrides: { ...(prev.customOverrides || {}), [planId]: planOv },
                     currentPlanId: planId
                 };
             } else {
                 const newCustomPlan = { ...updatedPlan, id: activeId };
+                // Gelernte Uebungslisten des Original-Plans mitnehmen (ausser bei im Editor geaenderten Tagen)
+                const basePlan = PLANS.find(p => p.id === planId);
+                const carried = { ...((prev.customOverrides || {})[planId] || {}) };
+                (updatedPlan.days || []).forEach(day => {
+                    const old = basePlan?.days?.find(d => d.id === day.id);
+                    if (!old || JSON.stringify(old.exercises) !== JSON.stringify(day.exercises)) delete carried[day.id];
+                });
                 return {
                     ...prev,
                     customPlans: [...(prev.customPlans || []), newCustomPlan],
+                    customOverrides: { ...(prev.customOverrides || {}), [activeId]: carried },
                     currentPlanId: activeId
                 };
             }
@@ -232,7 +250,10 @@ function useDataProvider() {
             id: `custom_${Date.now()}`,
             name: `${target.name} (Copy)`,
             description: target.description || '',
-            days: JSON.parse(JSON.stringify(target.days))
+            days: target.days.map(d => ({
+                ...JSON.parse(JSON.stringify(d)),
+                exercises: getExercisesForDay(planId, d.id).map(e => e.id)
+            }))
         };
         setData(prev => ({
             ...prev,
@@ -265,7 +286,8 @@ function useDataProvider() {
                         date: log.date,
                         sets: validSets,
                         note: ex.note || '',
-                        machine: ex.machine || 'Free Weights'
+                        machine: ex.machine || 'Free Weights',
+                        rpe: log.rpe ?? null
                     };
                 }
             }
@@ -295,6 +317,11 @@ function useDataProvider() {
         if (!plan || !plan.days || plan.days.length === 0) return null;
 
         const d = date instanceof Date ? date : new Date(date);
+        const ov = (data.scheduleOverrides || {})[dateKey(d)];
+        if (ov && ov.planId === plan.id) {
+            const forced = plan.days.find(x => x.id === ov.dayId);
+            if (forced) return forced;
+        }
         if (plan.id === 'ppl_ul_hybrid' || plan.days.length === 7) {
             const dayIndex = d.getDay(); // 0=Sun
             // Convert to 0=Mon, 6=Sun to match array
@@ -306,20 +333,46 @@ function useDataProvider() {
         return plan.days[0];
     }
 
-    const getWeekNumber = (date = new Date()) => {
-        if (!data.startDate) return 1;
-        const start = new Date(data.startDate);
-        const current = new Date(date);
-        const diffTime = Math.abs(current - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return Math.ceil(diffDays / 7);
-    }
+    // 4-Wochen-Zyklus: 3 Aufbauwochen, Woche 4 = Deload (Start = cycleStart bzw. startDate)
+    const getCycleInfo = (date = new Date()) => cycleInfo(date, data.cycleStart || data.startDate);
+    const getWeekNumber = (date = new Date()) => getCycleInfo(date).week;
+    const isDeloadWeek = (date = new Date()) => getCycleInfo(date).isDeload;
 
-    const isDeloadWeek = (date = new Date()) => {
-        const week = getWeekNumber(date);
-        // Deload every 8th week
-        return week > 0 && week % 8 === 0;
-    }
+    // Was wurde an diesem Datum tatsaechlich trainiert (Log) bzw. ist geplant (Override > Plan)?
+    const getActualWorkoutForDate = (date) => {
+        const d = date instanceof Date ? date : new Date(date);
+        const log = (data.logs || []).find(l => { try { return isSameDay(parseISO(l.date), d); } catch { return false; } });
+        if (log) {
+            const p = getAllPlans().find(x => x.id === log.planId) || getPlan();
+            const day = p?.days?.find(x => x.id === log.dayId);
+            return day || { id: log.dayId, name: String(log.dayId || '').replace(/_/g, ' ') };
+        }
+        return getWorkoutForDate(d);
+    };
+
+    // Anderes Training fuer ein bestimmtes Datum festlegen (dayId = null setzt auf den Plan zurueck)
+    const setDayForDate = (date, dayId) => {
+        const key = dateKey(date instanceof Date ? date : new Date(date));
+        const plan = getPlan();
+        setData(prev => {
+            const next = { ...(prev.scheduleOverrides || {}) };
+            if (dayId && plan) next[key] = { planId: plan.id, dayId };
+            else delete next[key];
+            return { ...prev, scheduleOverrides: next };
+        });
+    };
+
+    const saveWellness = (entry, date = new Date()) => {
+        setData(prev => ({ ...prev, wellness: { ...(prev.wellness || {}), [dateKey(date)]: entry } }));
+    };
+
+    const updateSettings = (patch) => {
+        setData(prev => ({ ...prev, settings: { ...(prev.settings || {}), ...patch } }));
+    };
+
+    const restartCycle = () => {
+        setData(prev => ({ ...prev, cycleStart: new Date().toISOString() }));
+    };
 
     // Skip day just moves the pointer for sequential, or does nothing for calendar
     const skipDay = () => {
@@ -609,6 +662,12 @@ function useDataProvider() {
         getWorkoutForDate,
         getWeekNumber,
         isDeloadWeek,
+        getCycleInfo,
+        getActualWorkoutForDate,
+        setDayForDate,
+        saveWellness,
+        updateSettings,
+        restartCycle,
         getTodayLog,
         hasCompletedWorkoutToday,
         getNextTrainingDay,
